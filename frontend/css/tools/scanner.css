@@ -1,0 +1,34 @@
+/* Additional styling for the Port Scanner view */
+.scanner__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: #34d399;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.scanner__results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.scanner__results-table th,
+.scanner__results-table td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.1);
+    text-align: left;
+}
+
+.scanner__results-table tr:last-child td {
+    border-bottom: none;
+}
+
+.scanner__results-table tr[data-open="false"] td {
+    color: rgba(226, 232, 240, 0.55);
+}

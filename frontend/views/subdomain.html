@@ -1,0 +1,17 @@
+<link rel="stylesheet" href="css/tools/subdomain.css">
+<section class="panel fade-enter" data-view-root>
+    <header>
+        <h2 class="panel__title">Subdomain Finder</h2>
+        <p class="notice">Simulated subdomain discovery. Replace with API calls when backend is ready.</p>
+    </header>
+    <form id="subdomain-form" class="tool-form" autocomplete="off">
+        <div class="form__group">
+            <label class="form__label" for="subdomain-target">Target Domain</label>
+            <input class="form__input" id="subdomain-target" name="target" type="text" placeholder="example.com" required>
+        </div>
+        <button class="form__button" type="submit">Run</button>
+    </form>
+    <section aria-live="polite" id="subdomain-results" class="results" data-results>
+        Enter a domain to begin discovery.
+    </section>
+</section>

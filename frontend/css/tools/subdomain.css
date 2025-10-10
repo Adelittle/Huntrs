@@ -1,0 +1,17 @@
+/* Additional styling for the Subdomain Finder view */
+.subdomain__results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.subdomain__results-list li {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.6rem;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    font-size: 0.95rem;
+    word-break: break-word;
+}

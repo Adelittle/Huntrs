@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huntrs Toolkit</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app__header">
+            <h1 class="app__title">Huntrs Toolkit</h1>
+            <nav class="app__nav" aria-label="Primary">
+                <button class="nav__btn" data-view="subdomain" type="button">Subdomain Finder</button>
+                <button class="nav__btn" data-view="scanner" type="button">Port Scanner</button>
+            </nav>
+        </header>
+        <main id="main-content" class="app__main" tabindex="-1" aria-live="polite">
+            <noscript>You need JavaScript enabled to use the toolkit.</noscript>
+        </main>
+        <footer class="app__footer">
+            <small>&copy; <span id="current-year"></span> Huntrs Security Labs</small>
+        </footer>
+    </div>
+    <template id="view-template"></template>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
