@@ -64,42 +64,54 @@ type DirectoryScanPayload struct {
 	UserAgentLabel string   `json:"userAgentLabel"`
 }
 
-func EnqueueSubdomainScan(payload SubdomainScanPayload) {
+func EnqueueSubdomainScan(payload SubdomainScanPayload) (*asynq.TaskInfo, error) {
 	p, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("ERROR: tidak dapat me-marshal payload subdomain: %v", err)
-		return
+		return nil, err
 	}
 	task := asynq.NewTask(TypeSubdomainScan, p)
-	_, err = asynqClient.Enqueue(task)
+	info, err := asynqClient.Enqueue(task)
 	if err != nil {
 		log.Printf("ERROR: tidak dapat menambahkan tugas subdomain ke antrian: %v", err)
+		return nil, err
 	}
+	return info, nil
 }
 
 // EnqueueHttpxScan membuat dan menambahkan tugas pemindaian httpx baru.
-func EnqueueHttpxScan(payload HttpxScanPayload) {
+func EnqueueHttpxScan(payload HttpxScanPayload) (*asynq.TaskInfo, error) {
 	p, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("ERROR: could not marshal httpx payload: %v", err)
-		return
+		return nil, err
 	}
 	task := asynq.NewTask(TypeHttpxScan, p)
-	_, err = asynqClient.Enqueue(task)
+	info, err := asynqClient.Enqueue(task)
 	if err != nil {
 		log.Printf("ERROR: could not enqueue httpx task: %v", err)
+		return nil, err
 	}
+	return info, nil
 }
 
-func EnqueueDirectoryScan(payload DirectoryScanPayload) {
+func EnqueueDirectoryScan(payload DirectoryScanPayload) (*asynq.TaskInfo, error) {
 	p, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("ERROR: tidak dapat me-marshal payload direktori: %v", err)
-		return
+		return nil, err
 	}
 	task := asynq.NewTask(TypeDirectoryScan, p)
-	_, err = asynqClient.Enqueue(task)
+	info, err := asynqClient.Enqueue(task)
 	if err != nil {
 		log.Printf("ERROR: tidak dapat menambahkan tugas direktori ke antrian: %v", err)
+		return nil, err
 	}
+	return info, nil
+}
+
+// CancelTask membatalkan pemrosesan tugas yang sedang berjalan.
+func CancelTask(queue, taskID string) error {
+	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: redisAddr})
+	return inspector.CancelProcessing(queue, taskID)
 }

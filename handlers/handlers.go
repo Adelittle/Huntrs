@@ -4,6 +4,7 @@ import (
 	"bugbounty/app/auth"
 	"bugbounty/app/state"
 	"bugbounty/app/tasks"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
 )
 
 // LoginPayload mendefinisikan struktur data yang diharapkan dari body request login.
@@ -108,9 +110,26 @@ func SubdomainScanHandler(c *gin.Context) {
 		Username: username.(string),
 	}
 
-	tasks.EnqueueSubdomainScan(payload)
-	// Catat pemindaian aktif untuk tool "subdomain".
-	state.SetActiveScan(username.(string), "subdomain", fileName)
+	info, err := tasks.EnqueueSubdomainScan(payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menambahkan tugas subdomain ke antrian"})
+		return
+	}
+
+	taskID := ""
+	queue := ""
+	if info != nil {
+		taskID = info.ID
+		queue = info.Queue
+	}
+
+	// Catat pemindaian aktif untuk tool "subdomain" dengan status scanning.
+	state.SetActiveScan(username.(string), "subdomain", state.ScanInfo{
+		FileName: fileName,
+		Status:   "scanning",
+		TaskID:   taskID,
+		Queue:    queue,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tugas subdomain scan telah ditambahkan ke antrian"})
 }
@@ -187,9 +206,26 @@ func HttpxScanHandler(c *gin.Context) {
 		FilterStatusCodes: filterStatusCodes,
 	}
 
-	tasks.EnqueueHttpxScan(payload)
+	info, err := tasks.EnqueueHttpxScan(payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menambahkan tugas httpx ke antrian"})
+		return
+	}
+
+	taskID := ""
+	queue := ""
+	if info != nil {
+		taskID = info.ID
+		queue = info.Queue
+	}
+
 	// Catat pemindaian aktif untuk tool "httpx".
-	state.SetActiveScan(username.(string), "httpx", fileName)
+	state.SetActiveScan(username.(string), "httpx", state.ScanInfo{
+		FileName: fileName,
+		Status:   "scanning",
+		TaskID:   taskID,
+		Queue:    queue,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Httpx probe task has been added to the queue"})
 }
@@ -350,8 +386,25 @@ func DirectoryScanHandler(c *gin.Context) {
 		UserAgentLabel: userAgentLabel,
 	}
 
-	tasks.EnqueueDirectoryScan(payload)
-	state.SetActiveScan(username.(string), "directory", fileName)
+	info, err := tasks.EnqueueDirectoryScan(payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menambahkan tugas directory ke antrian"})
+		return
+	}
+
+	taskID := ""
+	queue := ""
+	if info != nil {
+		taskID = info.ID
+		queue = info.Queue
+	}
+
+	state.SetActiveScan(username.(string), "directory", state.ScanInfo{
+		FileName: fileName,
+		Status:   "fuzzing",
+		TaskID:   taskID,
+		Queue:    queue,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tugas directory scan telah ditambahkan ke antrian", "fileName": fileName})
 }
@@ -508,4 +561,42 @@ func ClearUserStatusHandler(c *gin.Context) {
 	username, _ := c.Get("username")
 	state.ClearActiveScan(username.(string), body.Tool)
 	c.JSON(http.StatusOK, gin.H{"message": "Status berhasil dihapus"})
+}
+
+// StopScanHandler menghentikan pemindaian aktif untuk tool tertentu.
+func StopScanHandler(c *gin.Context) {
+	var body struct {
+		Tool string `json:"tool" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama tool diperlukan"})
+		return
+	}
+
+	tool := strings.ToLower(strings.TrimSpace(body.Tool))
+	if tool != "subdomain" && tool != "httpx" && tool != "directory" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tool tidak dikenal"})
+		return
+	}
+
+	username, _ := c.Get("username")
+	scanInfo, ok := state.GetScanInfo(username.(string), tool)
+	if !ok || scanInfo.TaskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada pemindaian aktif untuk tool ini"})
+		return
+	}
+
+	queue := scanInfo.Queue
+	if queue == "" {
+		queue = "default"
+	}
+
+	if err := tasks.CancelTask(queue, scanInfo.TaskID); err != nil && !errors.Is(err, asynq.ErrTaskNotFound) {
+		log.Printf("ERROR: gagal menghentikan pemindaian %s: %v", tool, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghentikan pemindaian"})
+		return
+	}
+
+	state.ClearActiveScan(username.(string), tool)
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Permintaan penghentian %s sedang diproses", tool)})
 }
