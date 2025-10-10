@@ -227,6 +227,8 @@ func DirectoryScanHandler(c *gin.Context) {
 	wordlistOption := c.PostForm("wordlistOption")
 	wordlist := strings.TrimSpace(c.PostForm("wordlist"))
 	wordlistURL := strings.TrimSpace(c.PostForm("wordlistUrl"))
+	userAgent := strings.TrimSpace(c.PostForm("userAgent"))
+	userAgentLabel := strings.TrimSpace(c.PostForm("userAgentLabel"))
 
 	rawHeaders := c.PostFormArray("headers[]")
 	if len(rawHeaders) == 0 {
@@ -238,6 +240,9 @@ func DirectoryScanHandler(c *gin.Context) {
 		if trimmed != "" {
 			headers = append(headers, trimmed)
 		}
+	}
+	if userAgent != "" {
+		headers = append(headers, fmt.Sprintf("User-Agent: %s", userAgent))
 	}
 
 	var targets []string
@@ -341,6 +346,8 @@ func DirectoryScanHandler(c *gin.Context) {
 		Headers:        headers,
 		Method:         method,
 		OutputFormat:   outputFormat,
+		UserAgent:      userAgent,
+		UserAgentLabel: userAgentLabel,
 	}
 
 	tasks.EnqueueDirectoryScan(payload)
