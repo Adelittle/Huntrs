@@ -378,7 +378,118 @@
                 <div id="directorySection" class="section hidden">
                     <h2
                         class="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
-                        Work in Progress</h2>
+                        📁 Directory Fuzzing</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-300">Configuration</h3>
+                            <form id="directoryForm" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target URL</label>
+                                    <input type="text" id="directoryTarget" name="target"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        placeholder="https://example.com/FUZZ" required>
+                                    <p class="text-sm text-gray-400 mt-1">Use the FUZZ keyword where ffuf should inject words.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Wordlist Path</label>
+                                    <input type="text" id="directoryWordlist" name="wordlist"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        value="/usr/share/wordlists/dirb/common.txt" required>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Extensions (-e)</label>
+                                        <input type="text" id="directoryExtensions" name="extensions"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="php,html,txt">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Threads (-t)</label>
+                                        <input type="number" id="directoryThreads" name="threads"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            value="40" min="1">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Delay (-p)</label>
+                                        <input type="text" id="directoryDelay" name="delay"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="0.1" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Match Codes (-mc)</label>
+                                        <input type="text" id="directoryMatchCodes" name="matchCodes"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            value="200,204,301,302,307,401,403">
+                                    </div>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="directoryRecursive" name="recursive" value="true"
+                                        class="h-4 w-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <label for="directoryRecursive" class="ml-2 text-sm text-gray-300">Enable recursion</label>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Result File Name</label>
+                                    <input type="text" id="directoryFileName" name="fileName"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        placeholder="directory-result.txt">
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-sm font-medium text-gray-300">Custom Headers</label>
+                                        <button type="button" id="addHeaderField"
+                                            class="text-sm text-purple-400 hover:text-purple-300">+ Add Header</button>
+                                    </div>
+                                    <div id="directoryHeaders" class="space-y-2">
+                                        <div class="header-row flex flex-col md:flex-row gap-2">
+                                            <input type="text" name="headerName[]"
+                                                class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="Header-Name">
+                                            <input type="text" name="headerValue[]"
+                                                class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                placeholder="Header value">
+                                            <button type="button" class="remove-header hidden text-sm text-red-400 hover:text-red-300"
+                                                data-remove-header>&times;</button>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-400 mt-1">Add optional headers like authentication tokens. Leave blank if not needed.</p>
+                                </div>
+                                <button type="submit"
+                                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-300 w-full">
+                                    🚀 Start Fuzzing
+                                </button>
+                            </form>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-semibold text-gray-300">Live Output</h3>
+                                <button id="clearDirectoryResult"
+                                    class="text-sm text-gray-300 hover:text-white px-3 py-1 bg-gray-700 rounded-lg transition duration-300">
+                                    Clear
+                                </button>
+                            </div>
+                            <div id="directoryResults"
+                                class="terminal flex-1 overflow-y-auto p-4 rounded-lg border border-gray-700 bg-black text-green-400">
+                                Ready to fuzz directories...
+                            </div>
+                            <div class="mt-4 space-y-3">
+                                <form id="loadDirectoryResultForm" class="flex flex-col md:flex-row gap-2">
+                                    <input type="text" id="loadDirectoryFileName"
+                                        class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        placeholder="Enter filename...">
+                                    <button type="submit"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                                        Load
+                                    </button>
+                                </form>
+                                <button type="button" id="extractDirectoryResultBtn"
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                                    💾 Extract Result
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -437,6 +548,7 @@
             const normalized = tool.toLowerCase();
             if (normalized === 'subdomain') return 'subdomainResults';
             if (normalized === 'httpx' || normalized === 'httpxprobe') return 'httpxResults';
+            if (normalized === 'directory' || normalized === 'ffuf') return 'directoryResults';
             return null;
         }
 
@@ -588,6 +700,9 @@
                         }
                         if (statusData.activeScans && statusData.activeScans.httpx) {
                             loadResultByFilename(statusData.activeScans.httpx, 'httpxResults');
+                        }
+                        if (statusData.activeScans && statusData.activeScans.directory) {
+                            loadResultByFilename(statusData.activeScans.directory, 'directoryResults');
                         }
                     } else {
                          console.error("Failed to get user status:", statusResponse.statusText);
@@ -743,13 +858,122 @@
                 document.getElementById('httpxTotal').textContent = '0';
                 await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'httpx' }) });
             });
-            
+
+            // Directory Tools
+            const directoryHeadersContainer = document.getElementById('directoryHeaders');
+            const addHeaderButton = document.getElementById('addHeaderField');
+            function updateHeaderRemoveButtons() {
+                if (!directoryHeadersContainer) return;
+                const rows = directoryHeadersContainer.querySelectorAll('.header-row');
+                rows.forEach((row, index) => {
+                    const removeBtn = row.querySelector('[data-remove-header]');
+                    if (!removeBtn) return;
+                    if (index === 0) {
+                        removeBtn.classList.add('hidden');
+                    } else {
+                        removeBtn.classList.remove('hidden');
+                    }
+                });
+            }
+            if (addHeaderButton && directoryHeadersContainer) {
+                addHeaderButton.addEventListener('click', () => {
+                    const row = document.createElement('div');
+                    row.className = 'header-row flex flex-col md:flex-row gap-2';
+                    row.innerHTML = `
+                        <input type="text" name="headerName[]" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Header-Name">
+                        <input type="text" name="headerValue[]" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Header value">
+                        <button type="button" class="remove-header text-sm text-red-400 hover:text-red-300" data-remove-header>&times;</button>`;
+                    directoryHeadersContainer.appendChild(row);
+                    updateHeaderRemoveButtons();
+                });
+                directoryHeadersContainer.addEventListener('click', (event) => {
+                    const target = event.target;
+                    if (target && target.matches('[data-remove-header]')) {
+                        event.preventDefault();
+                        const row = target.closest('.header-row');
+                        if (row) {
+                            row.remove();
+                            updateHeaderRemoveButtons();
+                        }
+                    }
+                });
+                updateHeaderRemoveButtons();
+            }
+
+            document.getElementById('directoryForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const token = localStorage.getItem('jwtToken');
+                if (!token) { logout(); return; }
+                const resultsDiv = document.getElementById('directoryResults');
+                resultsDiv.innerHTML = '';
+                const formData = new FormData(this);
+                let fileName = formData.get('fileName');
+                if (!fileName) {
+                    fileName = `directory-result-${Date.now()}.txt`;
+                    formData.set('fileName', fileName);
+                    document.getElementById('directoryFileName').value = fileName;
+                }
+                formData.delete('recursive');
+                formData.set('recursive', document.getElementById('directoryRecursive').checked ? 'true' : 'false');
+                formData.delete('headers[]');
+                const headerRows = directoryHeadersContainer.querySelectorAll('.header-row');
+                headerRows.forEach((row) => {
+                    const name = row.querySelector('input[name="headerName[]"]');
+                    const value = row.querySelector('input[name="headerValue[]"]');
+                    const headerName = name ? name.value.trim() : '';
+                    const headerValue = value ? value.value.trim() : '';
+                    if (headerName && headerValue) {
+                        formData.append('headers[]', `${headerName}: ${headerValue}`);
+                    }
+                });
+                document.getElementById('loadDirectoryFileName').value = fileName;
+                displayInTerminal('directoryResults', `Starting ffuf scan. Results will be saved to ${fileName}`, 'info');
+                try {
+                    const response = await fetch(`${apiUrl}/scan/directory`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.fileName && data.fileName !== fileName) {
+                            fileName = data.fileName;
+                            document.getElementById('directoryFileName').value = data.fileName;
+                            document.getElementById('loadDirectoryFileName').value = data.fileName;
+                        }
+                        displayInTerminal('directoryResults', `Request accepted! Waiting for ffuf results...`, 'success');
+                    } else {
+                        const data = await response.json();
+                        displayInTerminal('directoryResults', `Error: ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    displayInTerminal('directoryResults', `Failed to send request: ${error.message}`, 'error');
+                }
+            });
+
+            document.getElementById('loadDirectoryResultForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                loadResultByFilename(document.getElementById('loadDirectoryFileName').value, 'directoryResults');
+            });
+            document.getElementById('extractDirectoryResultBtn').addEventListener('click', () => {
+                const preferredFile = document.getElementById('loadDirectoryFileName').value || document.getElementById('directoryFileName').value;
+                extractResultByFilename(preferredFile, 'directoryResults');
+            });
+            document.getElementById('clearDirectoryResult').addEventListener('click', async (e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('jwtToken');
+                document.getElementById('directoryResults').innerHTML = `<div class="text-gray-400">Ready to fuzz directories...</div>`;
+                if (token) {
+                    await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'directory' }) });
+                }
+            });
+
             // Initial call
             checkLoginStatus();
         });
         
         // --- Standalone Functions (no dependency on DOM ready) ---
-        async function fetchToolStatus(){const token=localStorage.getItem("jwtToken");if(!token)return;const container=document.getElementById("toolStatusContainer");try{const response=await fetch(`${apiUrl}/tools/status`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){throw new Error((await response.json()).error||"Failed to fetch tool status")}const statuses=await response.json();container.innerHTML="";if(!statuses||statuses.length===0){container.innerHTML='<div class="text-yellow-400">No tools configured.</div>';return}statuses.forEach(tool=>{const statusText=tool.installed?"✓ Installed":"✗ Not Installed";const statusColor=tool.installed?"text-green-400":"text-red-400";let icon="🛠️";if(tool.name.includes("amass"))icon="🌐";if(tool.name.includes("assetfinder"))icon="🔍";if(tool.name.includes("sublist3r"))icon="📡";if(tool.name.includes("subfinder"))icon="🔎";if(tool.name.includes("httpx"))icon="🔗";const toolDiv=document.createElement("div");toolDiv.className="flex items-center justify-between p-3 bg-gray-700 rounded-lg";toolDiv.innerHTML=`<div class="flex items-center"><span class="text-2xl mr-3">${icon}</span><span class="text-gray-300 capitalize">${tool.name}</span></div><span class="${statusColor} text-sm font-semibold">${statusText}</span>`;container.appendChild(toolDiv)})}catch(error){container.innerHTML=`<div class="text-red-400 p-3 bg-gray-700 rounded-lg">Error: ${error.message}</div>`}}async function fetchSystemStats(){const token=localStorage.getItem("jwtToken");if(!token)return;try{const response=await fetch(`${apiUrl}/stats`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){if(response.status===401){logout()}return}const stats=await response.json();document.getElementById("cpuValue").textContent=`${stats.cpu.toFixed(1)}%`;document.getElementById("cpuBar").style.width=`${stats.cpu.toFixed(1)}%`;document.getElementById("ramValue").textContent=`${formatBytes(stats.ram_used)}`;document.getElementById("ramBar").style.width=`${stats.ram_percent.toFixed(1)}%`;document.getElementById("ramText").textContent=`${formatBytes(stats.ram_used)} of ${formatBytes(stats.ram_total)}`;document.getElementById("storageValue").textContent=`${formatBytes(stats.disk_used)}`;document.getElementById("storageBar").style.width=`${stats.disk_percent.toFixed(1)}%`;document.getElementById("storageText").textContent=`${formatBytes(stats.disk_used)} of ${formatBytes(stats.disk_total)}`}catch(error){console.error("Failed to fetch system stats:",error)}}
+        async function fetchToolStatus(){const token=localStorage.getItem("jwtToken");if(!token)return;const container=document.getElementById("toolStatusContainer");try{const response=await fetch(`${apiUrl}/tools/status`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){throw new Error((await response.json()).error||"Failed to fetch tool status")}const statuses=await response.json();container.innerHTML="";if(!statuses||statuses.length===0){container.innerHTML='<div class="text-yellow-400">No tools configured.</div>';return}statuses.forEach(tool=>{const statusText=tool.installed?"✓ Installed":"✗ Not Installed";const statusColor=tool.installed?"text-green-400":"text-red-400";let icon="🛠️";if(tool.name.includes("amass"))icon="🌐";if(tool.name.includes("assetfinder"))icon="🔍";if(tool.name.includes("sublist3r"))icon="📡";if(tool.name.includes("subfinder"))icon="🔎";if(tool.name.includes("httpx"))icon="🔗";if(tool.name.includes("ffuf"))icon="📁";const toolDiv=document.createElement("div");toolDiv.className="flex items-center justify-between p-3 bg-gray-700 rounded-lg";toolDiv.innerHTML=`<div class="flex items-center"><span class="text-2xl mr-3">${icon}</span><span class="text-gray-300 capitalize">${tool.name}</span></div><span class="${statusColor} text-sm font-semibold">${statusText}</span>`;container.appendChild(toolDiv)})}catch(error){container.innerHTML=`<div class="text-red-400 p-3 bg-gray-700 rounded-lg">Error: ${error.message}</div>`}}async function fetchSystemStats(){const token=localStorage.getItem("jwtToken");if(!token)return;try{const response=await fetch(`${apiUrl}/stats`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){if(response.status===401){logout()}return}const stats=await response.json();document.getElementById("cpuValue").textContent=`${stats.cpu.toFixed(1)}%`;document.getElementById("cpuBar").style.width=`${stats.cpu.toFixed(1)}%`;document.getElementById("ramValue").textContent=`${formatBytes(stats.ram_used)}`;document.getElementById("ramBar").style.width=`${stats.ram_percent.toFixed(1)}%`;document.getElementById("ramText").textContent=`${formatBytes(stats.ram_used)} of ${formatBytes(stats.ram_total)}`;document.getElementById("storageValue").textContent=`${formatBytes(stats.disk_used)}`;document.getElementById("storageBar").style.width=`${stats.disk_percent.toFixed(1)}%`;document.getElementById("storageText").textContent=`${formatBytes(stats.disk_used)} of ${formatBytes(stats.disk_total)}`}catch(error){console.error("Failed to fetch system stats:",error)}}
     </script>
 </body>
 </html>

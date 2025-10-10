@@ -40,11 +40,17 @@ type HttpxScanPayload struct {
 	FilterStatusCodes string   `json:"filterStatusCodes"`
 }
 
-
 type DirectoryScanPayload struct {
-	Targets  []string `json:"targets"`
-	Wordlist string   `json:"wordlist"`
-	SocketID string   `json:"socketId"`
+	Target     string   `json:"target"`
+	Wordlist   string   `json:"wordlist"`
+	FileName   string   `json:"fileName"`
+	Username   string   `json:"username"`
+	Extensions string   `json:"extensions"`
+	Threads    string   `json:"threads"`
+	Delay      string   `json:"delay"`
+	MatchCodes string   `json:"matchCodes"`
+	Recursive  bool     `json:"recursive"`
+	Headers    []string `json:"headers"`
 }
 
 func EnqueueSubdomainScan(payload SubdomainScanPayload) {
@@ -74,7 +80,6 @@ func EnqueueHttpxScan(payload HttpxScanPayload) {
 	}
 }
 
-
 func EnqueueDirectoryScan(payload DirectoryScanPayload) {
 	p, err := json.Marshal(payload)
 	if err != nil {
@@ -87,4 +92,3 @@ func EnqueueDirectoryScan(payload DirectoryScanPayload) {
 		log.Printf("ERROR: tidak dapat menambahkan tugas direktori ke antrian: %v", err)
 	}
 }
-
