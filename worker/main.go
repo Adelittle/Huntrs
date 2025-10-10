@@ -76,6 +76,13 @@ func sendUpdate(username, tool, updateType, message string) {
 	rdb.Publish(context.Background(), redisPubSubChannel, payload)
 }
 
+func notifyCancellation(username, tool, message string) {
+	if message == "" {
+		message = "Pemindaian dibatalkan oleh pengguna."
+	}
+	sendUpdate(username, tool, "scan_cancelled", message)
+}
+
 func downloadTempWordlist(source string) (string, func(), error) {
 	parsed, err := url.Parse(source)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
@@ -158,7 +165,13 @@ func handleSubdomainScanTask(ctx context.Context, t *asynq.Task) error {
 		defer outputFile.Close()
 	}
 
+	cancelled := false
+
 	for _, target := range p.Targets {
+		if ctx.Err() != nil {
+			cancelled = true
+			break
+		}
 		if target == "" {
 			continue
 		}
@@ -196,10 +209,31 @@ func handleSubdomainScanTask(ctx context.Context, t *asynq.Task) error {
 
 		stdout, _ := cmd.StdoutPipe()
 		stderr, _ := cmd.StderrPipe()
-		cmd.Start()
+		if err := cmd.Start(); err != nil {
+			sendUpdate(p.Username, "subdomain", "error", fmt.Sprintf("Tidak dapat memulai pemindaian untuk %s", target))
+			return err
+		}
+
+		done := make(chan struct{})
+		go func(command *exec.Cmd) {
+			select {
+			case <-ctx.Done():
+				if command.Process != nil {
+					command.Process.Kill()
+				}
+			case <-done:
+			}
+		}(cmd)
 
 		scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
 		for scanner.Scan() {
+			if ctx.Err() != nil {
+				cancelled = true
+				if cmd.Process != nil {
+					cmd.Process.Kill()
+				}
+				break
+			}
 			line := scanner.Text()
 			sendUpdate(p.Username, "subdomain", "data", line)
 			if p.Tool == "assetfinder" && outputFile != nil && isPotentialSubdomain(line, target) {
@@ -207,10 +241,21 @@ func handleSubdomainScanTask(ctx context.Context, t *asynq.Task) error {
 			}
 		}
 
-		if err := cmd.Wait(); err != nil {
+		close(done)
+
+		if err := cmd.Wait(); err != nil && ctx.Err() == nil && !cancelled {
 			log.Printf("Perintah selesai dengan error untuk target %s: %v", target, err)
 			sendUpdate(p.Username, "subdomain", "error", fmt.Sprintf("Pemindaian untuk %s gagal.", target))
 		}
+
+		if cancelled {
+			break
+		}
+	}
+
+	if cancelled || ctx.Err() != nil {
+		notifyCancellation(p.Username, "subdomain", "Pemindaian subdomain dibatalkan oleh pengguna.")
+		return nil
 	}
 
 	successMsg := fmt.Sprintf("\nPemindaian selesai. Hasil disimpan ke %s", p.FileName)
@@ -260,6 +305,11 @@ func handleHttpxScanTask(ctx context.Context, t *asynq.Task) error {
 		args = append(args, "-o", filePath)
 	}
 
+	if ctx.Err() != nil {
+		notifyCancellation(p.Username, "httpx", "HTTPx probe dibatalkan oleh pengguna.")
+		return nil
+	}
+
 	cmd := exec.Command("httpx", args...)
 
 	stdin, err := cmd.StdinPipe()
@@ -281,15 +331,41 @@ func handleHttpxScanTask(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 
+	done := make(chan struct{})
+	go func(command *exec.Cmd) {
+		select {
+		case <-ctx.Done():
+			if command.Process != nil {
+				command.Process.Kill()
+			}
+		case <-done:
+		}
+	}(cmd)
+
 	scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
 	for scanner.Scan() {
+		if ctx.Err() != nil {
+			if cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+			break
+		}
 		line := scanner.Text()
 		sendUpdate(p.Username, "httpx", "data", line)
 	}
 
+	close(done)
+
 	if err := cmd.Wait(); err != nil {
-		log.Printf("Httpx command finished with error: %v", err)
-		sendUpdate(p.Username, "httpx", "error", "Httpx probe finished with an error.")
+		if ctx.Err() == nil {
+			log.Printf("Httpx command finished with error: %v", err)
+			sendUpdate(p.Username, "httpx", "error", "Httpx probe finished with an error.")
+		}
+	}
+
+	if ctx.Err() != nil {
+		notifyCancellation(p.Username, "httpx", "HTTPx probe dibatalkan oleh pengguna.")
+		return nil
 	}
 
 	successMsg := "\nHTTPx probe completed."
@@ -349,8 +425,13 @@ func handleDirectoryScanTask(ctx context.Context, t *asynq.Task) error {
 	}
 
 	var savedFiles []string
+	cancelled := false
 
 	for index, rawTarget := range p.Targets {
+		if ctx.Err() != nil {
+			cancelled = true
+			break
+		}
 		target := strings.TrimSpace(rawTarget)
 		if target == "" {
 			continue
@@ -444,10 +525,28 @@ func handleDirectoryScanTask(ctx context.Context, t *asynq.Task) error {
 			return err
 		}
 
+		done := make(chan struct{})
+		go func(command *exec.Cmd) {
+			select {
+			case <-ctx.Done():
+				if command.Process != nil {
+					command.Process.Kill()
+				}
+			case <-done:
+			}
+		}(cmd)
+
 		scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
 		buf := make([]byte, 0, 64*1024)
 		scanner.Buffer(buf, 1024*1024)
 		for scanner.Scan() {
+			if ctx.Err() != nil {
+				cancelled = true
+				if cmd.Process != nil {
+					cmd.Process.Kill()
+				}
+				break
+			}
 			line := scanner.Text()
 			cleaned := strings.ReplaceAll(line, "\r", "")
 			if strings.TrimSpace(cleaned) == "" {
@@ -459,20 +558,33 @@ func handleDirectoryScanTask(ctx context.Context, t *asynq.Task) error {
 			}
 		}
 
-		if err := scanner.Err(); err != nil {
+		if err := scanner.Err(); err != nil && ctx.Err() == nil {
 			log.Printf("Scanner error for ffuf: %v", err)
 		}
 
+		close(done)
+
 		if err := cmd.Wait(); err != nil {
-			log.Printf("ffuf command finished with error: %v", err)
-			sendUpdate(p.Username, "directory", "error", "ffuf selesai dengan error")
-		} else {
+			if ctx.Err() == nil && !cancelled {
+				log.Printf("ffuf command finished with error: %v", err)
+				sendUpdate(p.Username, "directory", "error", "ffuf selesai dengan error")
+			}
+		} else if !cancelled {
 			sendUpdate(p.Username, "directory", "info", fmt.Sprintf("Pemindaian untuk %s selesai", target))
 		}
 
 		if outputFile != nil {
 			outputFile.Close()
 		}
+
+		if cancelled {
+			break
+		}
+	}
+
+	if cancelled || ctx.Err() != nil {
+		notifyCancellation(p.Username, "directory", "Directory fuzzing dibatalkan oleh pengguna.")
+		return nil
 	}
 
 	successMessage := "\nDirectory scan completed."

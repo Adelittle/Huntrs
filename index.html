@@ -212,7 +212,10 @@
                         </div>
                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xl font-semibold text-gray-300">Live Results</h3>
+                                <div class="flex items-center gap-3">
+                                    <h3 class="text-xl font-semibold text-gray-300">Live Results</h3>
+                                    <span id="subdomainStatus" class="status-badge text-xs font-semibold uppercase tracking-wide px-3 py-1 rounded-full border border-gray-600 text-gray-300 bg-gray-700">Idle</span>
+                                </div>
                                 <a href="#" id="clearSubdomainResult" class="text-sm text-gray-500 hover:text-gray-300">Clear Result</a>
                             </div>
                             <div id="subdomainResults" class="terminal p-4 rounded-lg h-64 overflow-y-auto text-sm">
@@ -333,10 +336,13 @@
                         </div>
                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xl font-semibold text-gray-300">Live Results</h3>
+                                <div class="flex items-center gap-3">
+                                    <h3 class="text-xl font-semibold text-gray-300">Live Results</h3>
+                                    <span id="httpxStatus" class="status-badge text-xs font-semibold uppercase tracking-wide px-3 py-1 rounded-full border border-gray-600 text-gray-300 bg-gray-700">Idle</span>
+                                </div>
                                 <a href="#" id="clearHttpxResult" class="text-sm text-gray-500 hover:text-gray-300">Clear Result</a>
                             </div>
-                            <div id="httpxResults" class="terminal p-4 rounded-lg flex-grow overflow-y-auto text-sm">
+                            <div id="httpxResults" class="terminal p-4 rounded-lg flex-grow h-64 overflow-y-auto text-sm">
                                 <div class="text-gray-400">Ready to probe...</div>
                             </div>
                             <div class="mt-4 grid grid-cols-3 gap-4 text-center">
@@ -569,22 +575,31 @@
                                     </div>
                                     <p class="text-sm text-gray-400 mt-1">Add optional headers like authentication tokens. Leave blank if not needed.</p>
                                 </div>
-                                <button type="submit"
-                                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-300 w-full">
-                                    🚀 Start Fuzzing
-                                </button>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button type="submit"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-300 w-full">
+                                        🚀 Start Fuzzing
+                                    </button>
+                                    <button type="button" id="directoryStopBtn"
+                                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition duration-300 w-full">
+                                        🛑 Stop Scan
+                                    </button>
+                                </div>
                             </form>
                         </div>
                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xl font-semibold text-gray-300">Live Output</h3>
+                                <div class="flex items-center gap-3">
+                                    <h3 class="text-xl font-semibold text-gray-300">Live Output</h3>
+                                    <span id="directoryStatus" class="status-badge text-xs font-semibold uppercase tracking-wide px-3 py-1 rounded-full border border-gray-600 text-gray-300 bg-gray-700">Idle</span>
+                                </div>
                                 <button id="clearDirectoryResult"
                                     class="text-sm text-gray-300 hover:text-white px-3 py-1 bg-gray-700 rounded-lg transition duration-300">
                                     Clear
                                 </button>
                             </div>
                             <div id="directoryResults"
-                                class="terminal flex-1 overflow-y-auto p-4 rounded-lg border border-gray-700 bg-black text-green-400">
+                                class="terminal flex-1 h-64 overflow-y-auto p-4 rounded-lg border border-gray-700 bg-black text-green-400">
                                 Ready to fuzz directories...
                             </div>
                             <div class="mt-4 space-y-3">
@@ -790,6 +805,31 @@
             terminal.scrollTop = terminal.scrollHeight;
         }
 
+        const STATUS_BASE_CLASS = 'status-badge text-xs font-semibold uppercase tracking-wide px-3 py-1 rounded-full border transition-colors duration-200';
+        const STATUS_STYLE_MAP = {
+            idle: { className: 'bg-gray-700 text-gray-300 border-gray-600', label: 'Idle' },
+            scanning: { className: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/40', label: 'Scanning' },
+            fuzzing: { className: 'bg-blue-500/10 text-blue-300 border-blue-500/40', label: 'Fuzzing' }
+        };
+        const TOOL_STATUS_LABELS = {
+            subdomain: { scanning: 'Scanning', idle: 'Idle' },
+            httpx: { scanning: 'Scanning', idle: 'Idle' },
+            directory: { fuzzing: 'Fuzzing', idle: 'Idle' }
+        };
+
+        function updateToolStatus(tool, status) {
+            if (!tool) return;
+            const badge = document.getElementById(`${tool}Status`);
+            if (!badge) return;
+            const normalizedStatus = (status || 'idle').toLowerCase();
+            const style = STATUS_STYLE_MAP[normalizedStatus] || STATUS_STYLE_MAP.idle;
+            const normalizedTool = tool.toLowerCase();
+            const toolLabels = TOOL_STATUS_LABELS[normalizedTool] || {};
+            const label = toolLabels[normalizedStatus] || style.label || normalizedStatus;
+            badge.textContent = label;
+            badge.className = `${STATUS_BASE_CLASS} ${style.className}`;
+        }
+
         function getTerminalIdByTool(tool) {
             if (!tool) return null;
             const normalized = tool.toLowerCase();
@@ -891,6 +931,21 @@
                                 if (loadInput) { loadInput.value = completion.fileNames[0]; }
                             }
                         }
+                        if (completionTool) {
+                            updateToolStatus(completionTool.toLowerCase(), 'idle');
+                        }
+                        return;
+                    }
+
+                    if (data.type === 'scan_cancelled') {
+                        const cancelledTool = (data.tool || '').toLowerCase();
+                        if (cancelledTool) {
+                            updateToolStatus(cancelledTool, 'idle');
+                        }
+                        const terminalId = getTerminalIdByTool(cancelledTool || data.tool);
+                        if (terminalId) {
+                            displayInTerminal(terminalId, data.message || 'Scan cancelled by user.', 'info');
+                        }
                         return;
                     }
 
@@ -929,6 +984,7 @@
             if (statsInterval) clearInterval(statsInterval);
             document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('dashboard').classList.add('hidden');
+            ['subdomain', 'httpx', 'directory'].forEach((tool) => updateToolStatus(tool, 'idle'));
         }
 
         async function checkLoginStatus() {
@@ -950,20 +1006,31 @@
                     if (statsInterval) clearInterval(statsInterval);
                     statsInterval = setInterval(fetchSystemStats, 3000);
                     
+                    ['subdomain', 'httpx', 'directory'].forEach((tool) => updateToolStatus(tool, 'idle'));
+
                     const statusResponse = await fetch(`${apiUrl}/user/status`, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if(statusResponse.ok) {
+                    if (statusResponse.ok) {
                         const statusData = await statusResponse.json();
-                        if (statusData.activeScans && statusData.activeScans.subdomain) {
-                            loadResultByFilename(statusData.activeScans.subdomain, 'subdomainResults');
-                        }
-                        if (statusData.activeScans && statusData.activeScans.httpx) {
-                            loadResultByFilename(statusData.activeScans.httpx, 'httpxResults');
-                        }
-                        if (statusData.activeScans && statusData.activeScans.directory) {
-                            loadResultByFilename(statusData.activeScans.directory, 'directoryResults');
+                        if (statusData.activeScans) {
+                            Object.entries(statusData.activeScans).forEach(([tool, info]) => {
+                                if (!info) return;
+                                const normalizedTool = tool.toLowerCase();
+                                if (info.status) {
+                                    updateToolStatus(normalizedTool, info.status);
+                                }
+                                if (info.fileName) {
+                                    if (normalizedTool === 'subdomain') {
+                                        loadResultByFilename(info.fileName, 'subdomainResults');
+                                    } else if (normalizedTool === 'httpx') {
+                                        loadResultByFilename(info.fileName, 'httpxResults');
+                                    } else if (normalizedTool === 'directory') {
+                                        loadResultByFilename(info.fileName, 'directoryResults');
+                                    }
+                                }
+                            });
                         }
                     } else {
-                         console.error("Failed to get user status:", statusResponse.statusText);
+                        console.error("Failed to get user status:", statusResponse.statusText);
                     }
                 } catch (e) {
                     console.error("Critical login check error (e.g., bad token), logging out:", e);
@@ -974,7 +1041,9 @@
 
         // --- Event Listener Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            
+
+            ['subdomain', 'httpx', 'directory'].forEach((tool) => updateToolStatus(tool, 'idle'));
+
             document.getElementById('loginForm').addEventListener('submit', async function (e) {
                 e.preventDefault();
                 const username = document.getElementById('username').value;
@@ -1063,6 +1132,7 @@
                     displayInTerminal('subdomainResults', `Running scan with command: ${command}`, 'info');
                 }
                 displayInTerminal('subdomainResults', `Starting new scan. Results will be saved to ${fileName}`, 'info');
+                updateToolStatus('subdomain', 'scanning');
                 try {
                     const response = await fetch(`${apiUrl}/scan/subdomain`, {
                         method: 'POST',
@@ -1074,9 +1144,11 @@
                     } else {
                         const data = await response.json();
                         displayInTerminal('subdomainResults', `Error: ${data.error}`, 'error');
+                        updateToolStatus('subdomain', 'idle');
                     }
                 } catch (error) {
                     displayInTerminal('subdomainResults', `Failed to send request: ${error.message}`, 'error');
+                    updateToolStatus('subdomain', 'idle');
                 }
             });
             document.getElementById('loadResultForm').addEventListener('submit', (e) => { e.preventDefault(); loadResultByFilename(document.getElementById('loadFileName').value, 'subdomainResults'); });
@@ -1085,7 +1157,29 @@
                 e.preventDefault();
                 const token = localStorage.getItem('jwtToken');
                 document.getElementById('subdomainResults').innerHTML = `<div class="text-gray-400">Ready to scan subdomains...</div>`;
+                updateToolStatus('subdomain', 'idle');
                 await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'subdomain' }) });
+            });
+
+            document.getElementById('subdomainStopBtn').addEventListener('click', async () => {
+                const token = localStorage.getItem('jwtToken');
+                if (!token) { logout(); return; }
+                try {
+                    const response = await fetch(`${apiUrl}/scan/stop`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tool: 'subdomain' })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        updateToolStatus('subdomain', 'idle');
+                        displayInTerminal('subdomainResults', data.message || 'Subdomain scan stop requested.', 'info');
+                    } else {
+                        displayInTerminal('subdomainResults', `Error stopping scan: ${data.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (error) {
+                    displayInTerminal('subdomainResults', `Failed to stop scan: ${error.message}`, 'error');
+                }
             });
 
             // HTTPx Probe Tools
@@ -1140,6 +1234,7 @@
                     displayInTerminal('httpxResults', `Running scan with command: ${command}`, 'info');
                 }
                 displayInTerminal('httpxResults', `Starting new HTTPx probe. Results will be saved to ${fileName}`, 'info');
+                updateToolStatus('httpx', 'scanning');
                 try {
                     const response = await fetch(`${apiUrl}/scan/httpx`, {
                         method: 'POST',
@@ -1151,9 +1246,11 @@
                     } else {
                         const data = await response.json();
                         displayInTerminal('httpxResults', `Error: ${data.error}`, 'error');
+                        updateToolStatus('httpx', 'idle');
                     }
                 } catch (error) {
                     displayInTerminal('httpxResults', `Failed to send request: ${error.message}`, 'error');
+                    updateToolStatus('httpx', 'idle');
                 }
             });
             document.getElementById('loadHttpxResultForm').addEventListener('submit', (e) => { e.preventDefault(); loadResultByFilename(document.getElementById('loadHttpxFileName').value, 'httpxResults'); });
@@ -1166,7 +1263,29 @@
                 document.getElementById('httpxAlive').textContent = '0';
                 document.getElementById('httpxDead').textContent = '0';
                 document.getElementById('httpxTotal').textContent = '0';
+                updateToolStatus('httpx', 'idle');
                 await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'httpx' }) });
+            });
+
+            document.getElementById('httpxStopBtn').addEventListener('click', async () => {
+                const token = localStorage.getItem('jwtToken');
+                if (!token) { logout(); return; }
+                try {
+                    const response = await fetch(`${apiUrl}/scan/stop`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tool: 'httpx' })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        updateToolStatus('httpx', 'idle');
+                        displayInTerminal('httpxResults', data.message || 'HTTPx probe stop requested.', 'info');
+                    } else {
+                        displayInTerminal('httpxResults', `Error stopping probe: ${data.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (error) {
+                    displayInTerminal('httpxResults', `Failed to stop probe: ${error.message}`, 'error');
+                }
             });
 
             // Directory Tools
@@ -1388,6 +1507,7 @@
                     displayInTerminal('directoryResults', `Using User-Agent preset: ${userAgentLabel}`, 'info');
                 }
                 displayInTerminal('directoryResults', `Starting ffuf scan. Results will be saved to ${fileName}`, 'info');
+                updateToolStatus('directory', 'fuzzing');
                 try {
                     const response = await fetch(`${apiUrl}/scan/directory`, {
                         method: 'POST',
@@ -1405,9 +1525,11 @@
                     } else {
                         const data = await response.json();
                         displayInTerminal('directoryResults', `Error: ${data.error}`, 'error');
+                        updateToolStatus('directory', 'idle');
                     }
                 } catch (error) {
                     displayInTerminal('directoryResults', `Failed to send request: ${error.message}`, 'error');
+                    updateToolStatus('directory', 'idle');
                 }
             });
 
@@ -1423,8 +1545,30 @@
                 e.preventDefault();
                 const token = localStorage.getItem('jwtToken');
                 document.getElementById('directoryResults').innerHTML = `<div class="text-gray-400">Ready to fuzz directories...</div>`;
+                updateToolStatus('directory', 'idle');
                 if (token) {
                     await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'directory' }) });
+                }
+            });
+
+            document.getElementById('directoryStopBtn').addEventListener('click', async () => {
+                const token = localStorage.getItem('jwtToken');
+                if (!token) { logout(); return; }
+                try {
+                    const response = await fetch(`${apiUrl}/scan/stop`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tool: 'directory' })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        updateToolStatus('directory', 'idle');
+                        displayInTerminal('directoryResults', data.message || 'Directory fuzzing stop requested.', 'info');
+                    } else {
+                        displayInTerminal('directoryResults', `Error stopping scan: ${data.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (error) {
+                    displayInTerminal('directoryResults', `Failed to stop scan: ${error.message}`, 'error');
                 }
             });
 

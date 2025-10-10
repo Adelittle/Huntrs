@@ -46,10 +46,22 @@ func listenForWorkerUpdates() {
 				// Pesan sekarang adalah JSON, jadi kita perlu unmarshal
 				if err := json.Unmarshal([]byte(update["message"]), &completionData); err == nil {
 					// Cari pengguna yang statusnya cocok dengan file yang selesai
-					if user, ok := state.FindUserByScanFile(completionData.FileName); ok {
-						log.Printf("Scan '%s' for tool '%s' completed for user '%s'. Clearing state.", completionData.FileName, completionData.Tool, user)
-						state.ClearActiveScan(user, completionData.Tool)
+					if user, toolName, ok := state.FindUserByScanFile(completionData.FileName); ok {
+						resolvedTool := completionData.Tool
+						if resolvedTool == "" {
+							resolvedTool = toolName
+						}
+						log.Printf("Scan '%s' for tool '%s' completed for user '%s'. Clearing state.", completionData.FileName, resolvedTool, user)
+						state.ClearActiveScan(user, resolvedTool)
+					} else if username != "" && completionData.Tool != "" {
+						log.Printf("Scan for tool '%s' completed for user '%s'. Clearing state via fallback.", completionData.Tool, username)
+						state.ClearActiveScan(username, completionData.Tool)
 					}
+				}
+			} else if update["type"] == "scan_cancelled" {
+				if username != "" && update["tool"] != "" {
+					log.Printf("Scan for tool '%s' cancelled for user '%s'. Clearing state.", update["tool"], username)
+					state.ClearActiveScan(username, update["tool"])
 				}
 			}
 		}
@@ -82,6 +94,7 @@ func main() {
 		protected.POST("/scan/subdomain", handlers.SubdomainScanHandler)
 		protected.POST("/scan/httpx", handlers.HttpxScanHandler)
 		protected.POST("/scan/directory", handlers.DirectoryScanHandler)
+		protected.POST("/scan/stop", handlers.StopScanHandler)
 		protected.POST("/results/load", handlers.LoadResultHandler)
 		protected.POST("/results/extract", handlers.ExtractResultHandler)
 		protected.GET("/user/status", handlers.UserStatusHandler)
