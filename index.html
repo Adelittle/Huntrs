@@ -432,6 +432,14 @@
             terminal.scrollTop = terminal.scrollHeight;
         }
 
+        function getTerminalIdByTool(tool) {
+            if (!tool) return null;
+            const normalized = tool.toLowerCase();
+            if (normalized === 'subdomain') return 'subdomainResults';
+            if (normalized === 'httpx' || normalized === 'httpxprobe') return 'httpxResults';
+            return null;
+        }
+
         async function loadResultByFilename(fileName, terminalId) {
             const token = localStorage.getItem('jwtToken');
             if (!fileName) { displayInTerminal(terminalId, 'Please enter a file name to load.', 'error'); return; }
@@ -501,21 +509,41 @@
                 socket.onopen = () => { console.log("WebSocket connection established."); resolve(); };
                 socket.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    if (data.type) {
+                    if (!data.type) { return; }
+
+                    if (data.type === 'scan_completed') {
+                        let completion = null;
+                        try { completion = JSON.parse(data.message); } catch (error) { completion = null; }
+                        const completionTool = (completion && completion.tool) || data.tool;
+                        const terminalId = getTerminalIdByTool(completionTool);
+                        if (terminalId) {
+                            const fileMessage = completion && completion.fileName ? ` Results saved to ${completion.fileName}` : '';
+                            const label = completionTool ? completionTool.toUpperCase() : 'SCAN';
+                            displayInTerminal(terminalId, `${label} scan completed.${fileMessage ? ' ' + fileMessage : ''}`, 'success');
+                        }
+                        return;
+                    }
+
+                    let terminalId = getTerminalIdByTool(data.tool);
+                    if (!terminalId) {
                         const activeSection = document.querySelector('.section:not(.hidden)');
-                        if (!activeSection) return;
-                        const resultsDiv = activeSection.querySelector('.terminal');
-                        if (resultsDiv) {
-                            displayInTerminal(resultsDiv.id, data.message, data.type);
-                            if (resultsDiv.id === 'httpxResults' && data.type === 'data') {
-                                 if (/\[\d{3}\]/.test(data.message) && !data.message.startsWith('http') && !data.message.includes('failed')) {
-                                   httpxAliveCount++;
-                                   document.getElementById('httpxAlive').textContent = httpxAliveCount.toString();
-                                } else if (data.message.includes('failed')) {
-                                   httpxDeadCount++;
-                                   document.getElementById('httpxDead').textContent = httpxDeadCount.toString();
-                                }
-                            }
+                        if (activeSection) {
+                            const fallback = activeSection.querySelector('.terminal');
+                            if (fallback) { terminalId = fallback.id; }
+                        }
+                    }
+
+                    if (!terminalId) { return; }
+
+                    displayInTerminal(terminalId, data.message, data.type);
+
+                    if (terminalId === 'httpxResults' && data.type === 'data') {
+                        if (/\[\d{3}\]/.test(data.message) && !data.message.startsWith('http') && !data.message.includes('failed')) {
+                            httpxAliveCount++;
+                            document.getElementById('httpxAlive').textContent = httpxAliveCount.toString();
+                        } else if (data.message.includes('failed')) {
+                            httpxDeadCount++;
+                            document.getElementById('httpxDead').textContent = httpxDeadCount.toString();
                         }
                     }
                 };
