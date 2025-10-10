@@ -43,6 +43,19 @@ type HttpxScanPayload struct {
 	FilterStatusCodes string   `json:"filterStatusCodes"`
 }
 
+type DirectoryScanPayload struct {
+	Target     string   `json:"target"`
+	Wordlist   string   `json:"wordlist"`
+	FileName   string   `json:"fileName"`
+	Username   string   `json:"username"`
+	Extensions string   `json:"extensions"`
+	Threads    string   `json:"threads"`
+	Delay      string   `json:"delay"`
+	MatchCodes string   `json:"matchCodes"`
+	Recursive  bool     `json:"recursive"`
+	Headers    []string `json:"headers"`
+}
+
 func sendUpdate(username, tool, updateType, message string) {
 	update := map[string]string{"username": username, "tool": tool, "type": updateType, "message": message}
 	payload, _ := json.Marshal(update)
@@ -236,6 +249,116 @@ func handleHttpxScanTask(ctx context.Context, t *asynq.Task) error {
 	return nil
 }
 
+func handleDirectoryScanTask(ctx context.Context, t *asynq.Task) error {
+	var p DirectoryScanPayload
+	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		return fmt.Errorf("could not unmarshal directory payload: %v", err)
+	}
+
+	log.Printf("Menerima tugas Directory scan untuk %s", p.Target)
+	sendUpdate(p.Username, "directory", "info", fmt.Sprintf("Starting ffuf scan against %s", p.Target))
+
+	if p.Wordlist == "" {
+		sendUpdate(p.Username, "directory", "error", "Wordlist tidak ditemukan atau kosong")
+		return fmt.Errorf("wordlist kosong")
+	}
+
+	resultsDir := "scan_results"
+	if err := os.MkdirAll(resultsDir, 0755); err != nil {
+		sendUpdate(p.Username, "directory", "error", "Gagal membuat direktori hasil")
+		return fmt.Errorf("tidak dapat membuat direktori hasil: %v", err)
+	}
+
+	var outputFile *os.File
+	var err error
+	if p.FileName != "" {
+		filePath := filepath.Join(resultsDir, filepath.Base(p.FileName))
+		outputFile, err = os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			sendUpdate(p.Username, "directory", "error", "Gagal membuka file output")
+			return fmt.Errorf("tidak dapat membuka file output: %v", err)
+		}
+		defer outputFile.Close()
+		fmt.Fprintf(outputFile, "# ffuf scan results for %s\n", p.Target)
+	}
+
+	args := []string{"-u", p.Target, "-w", p.Wordlist}
+	if p.Extensions != "" {
+		args = append(args, "-e", p.Extensions)
+	}
+	if p.Threads != "" {
+		args = append(args, "-t", p.Threads)
+	}
+	if p.Delay != "" {
+		args = append(args, "-p", p.Delay)
+	}
+	if p.MatchCodes != "" {
+		args = append(args, "-mc", p.MatchCodes)
+	}
+	if p.Recursive {
+		args = append(args, "-recursion")
+	}
+	for _, header := range p.Headers {
+		trimmed := strings.TrimSpace(header)
+		if trimmed != "" {
+			args = append(args, "-H", trimmed)
+		}
+	}
+
+	cmd := exec.Command("ffuf", args...)
+	cmd.Env = append(os.Environ(), "TERM=dumb")
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		sendUpdate(p.Username, "directory", "error", "Gagal membuat stdout pipe untuk ffuf")
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		sendUpdate(p.Username, "directory", "error", "Gagal membuat stderr pipe untuk ffuf")
+		return err
+	}
+
+	if err := cmd.Start(); err != nil {
+		sendUpdate(p.Username, "directory", "error", "Tidak dapat memulai ffuf")
+		return err
+	}
+
+	scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+	for scanner.Scan() {
+		line := scanner.Text()
+		cleaned := strings.ReplaceAll(line, "\r", "")
+		if strings.TrimSpace(cleaned) == "" {
+			continue
+		}
+		sendUpdate(p.Username, "directory", "data", cleaned)
+		if outputFile != nil {
+			fmt.Fprintln(outputFile, cleaned)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("Scanner error for ffuf: %v", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		log.Printf("ffuf command finished with error: %v", err)
+		sendUpdate(p.Username, "directory", "error", "ffuf selesai dengan error")
+	}
+
+	successMessage := "\nDirectory scan completed."
+	if p.FileName != "" {
+		successMessage = fmt.Sprintf("\nDirectory scan completed. Results saved to %s", p.FileName)
+	}
+	sendUpdate(p.Username, "directory", "info", successMessage)
+
+	completionPayload, _ := json.Marshal(map[string]string{"tool": "directory", "fileName": p.FileName})
+	sendUpdate(p.Username, "directory", "scan_completed", string(completionPayload))
+	return nil
+}
+
 func main() {
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: redisAddr},
@@ -244,6 +367,7 @@ func main() {
 	mux := asynq.NewServeMux()
 	mux.HandleFunc("scan:subdomain", handleSubdomainScanTask)
 	mux.HandleFunc("scan:httpx", handleHttpxScanTask)
+	mux.HandleFunc("scan:directory", handleDirectoryScanTask)
 
 	log.Println("Worker berjalan dan siap menerima tugas...")
 	if err := srv.Run(mux); err != nil {

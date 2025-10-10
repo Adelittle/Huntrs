@@ -4,6 +4,7 @@ import (
 	"bugbounty/app/auth"
 	"bugbounty/app/state"
 	"bugbounty/app/tasks"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -189,9 +191,59 @@ func HttpxScanHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Httpx probe task has been added to the queue"})
 }
 
-
 func DirectoryScanHandler(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Fitur Directory Scan belum diimplementasikan"})
+	username, _ := c.Get("username")
+	target := strings.TrimSpace(c.PostForm("target"))
+	wordlist := strings.TrimSpace(c.PostForm("wordlist"))
+	fileName := strings.TrimSpace(c.PostForm("fileName"))
+	extensions := strings.TrimSpace(c.PostForm("extensions"))
+	threads := strings.TrimSpace(c.PostForm("threads"))
+	delay := strings.TrimSpace(c.PostForm("delay"))
+	matchCodes := strings.TrimSpace(c.PostForm("matchCodes"))
+	recursive := c.PostForm("recursive") == "true"
+
+	rawHeaders := c.PostFormArray("headers[]")
+	if len(rawHeaders) == 0 {
+		rawHeaders = c.PostFormArray("headers")
+	}
+	var headers []string
+	for _, h := range rawHeaders {
+		trimmed := strings.TrimSpace(h)
+		if trimmed != "" {
+			headers = append(headers, trimmed)
+		}
+	}
+
+	if target == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Target URL diperlukan"})
+		return
+	}
+	if wordlist == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Wordlist diperlukan"})
+		return
+	}
+
+	if fileName == "" {
+		fileName = fmt.Sprintf("directory-result-%d.txt", time.Now().Unix())
+	}
+
+	payload := tasks.DirectoryScanPayload{
+		Target:     target,
+		Wordlist:   wordlist,
+		FileName:   fileName,
+		Username:   username.(string),
+		Extensions: extensions,
+		Threads:    threads,
+		Delay:      delay,
+		MatchCodes: matchCodes,
+		Recursive:  recursive,
+		Headers:    headers,
+	}
+
+	tasks.EnqueueDirectoryScan(payload)
+	state.SetActiveScan(username.(string), "directory", fileName)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Tugas directory scan telah ditambahkan ke antrian", "fileName": fileName})
 }
 
 type ToolStatus struct {
@@ -213,7 +265,12 @@ func isToolInstalled(name string, alternativePath string) bool {
 
 func ToolStatusHandler(c *gin.Context) {
 	tools := map[string]string{
-		"amass":       "", "assetfinder": "", "sublist3r": "/root/Sublist3r/sublist3r.py", "subfinder": "", "httpx": "",
+		"amass":       "",
+		"assetfinder": "",
+		"sublist3r":   "/root/Sublist3r/sublist3r.py",
+		"subfinder":   "",
+		"httpx":       "",
+		"ffuf":        "",
 	}
 	var statuses []ToolStatus
 	for name, altPath := range tools {
@@ -223,7 +280,9 @@ func ToolStatusHandler(c *gin.Context) {
 }
 
 func LoadResultHandler(c *gin.Context) {
-	var body struct { FileName string `json:"fileName" binding:"required"`}
+	var body struct {
+		FileName string `json:"fileName" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama file diperlukan"})
 		return
@@ -245,7 +304,9 @@ func LoadResultHandler(c *gin.Context) {
 }
 
 func ExtractResultHandler(c *gin.Context) {
-	var body struct { FileName string `json:"fileName" binding:"required"`}
+	var body struct {
+		FileName string `json:"fileName" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama file diperlukan"})
 		return
@@ -276,7 +337,9 @@ func UserStatusHandler(c *gin.Context) {
 
 // ClearUserStatusHandler sekarang menerima nama tool yang akan dihapus.
 func ClearUserStatusHandler(c *gin.Context) {
-	var body struct { Tool string `json:"tool" binding:"required"`}
+	var body struct {
+		Tool string `json:"tool" binding:"required"`
+	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama tool diperlukan"})
 		return
@@ -285,4 +348,3 @@ func ClearUserStatusHandler(c *gin.Context) {
 	state.ClearActiveScan(username.(string), body.Tool)
 	c.JSON(http.StatusOK, gin.H{"message": "Status berhasil dihapus"})
 }
-
