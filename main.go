@@ -34,15 +34,7 @@ func listenForWorkerUpdates() {
 		if err := json.Unmarshal([]byte(msg.Payload), &update); err == nil {
 			username := update["username"] // Dapatkan username dari payload
 			if username != "" {
-				// Ambil semua koneksi aktif untuk pengguna ini
-				clients := websocket.Manager.GetUserClients(username)
-				for _, client := range clients {
-					// Kirim pembaruan ke setiap koneksi
-					select {
-					case client.Send <- []byte(msg.Payload):
-					default: // Jangan memblokir jika channel penuh
-					}
-				}
+				websocket.Manager.BroadcastToUser(username, []byte(msg.Payload))
 			}
 
 			// Jika pemindaian selesai, cari pengguna terkait dan hapus statusnya.
@@ -101,4 +93,3 @@ func main() {
 		log.Fatalf("Gagal menjalankan server: %v", err)
 	}
 }
-

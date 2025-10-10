@@ -106,6 +106,49 @@ func (h *Hub) GetUserClients(username string) []*Client {
 	return userClients
 }
 
+func safeSendToClient(client *Client, message []byte, block bool) bool {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("recovered from websocket send for user %s: %v", client.Username, r)
+		}
+	}()
+	if block {
+		client.Send <- message
+		return true
+	}
+	select {
+	case client.Send <- message:
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *Hub) BroadcastToUser(username string, message []byte) {
+	h.mu.Lock()
+	clientsMap, ok := h.Clients[username]
+	var clients []*Client
+	if ok {
+		for client := range clientsMap {
+			clients = append(clients, client)
+		}
+	}
+	h.mu.Unlock()
+
+	if len(clients) == 0 {
+		return
+	}
+
+	for _, client := range clients {
+		msgCopy := append([]byte(nil), message...)
+		if !safeSendToClient(client, msgCopy, false) {
+			go func(c *Client, payload []byte) {
+				safeSendToClient(c, payload, true)
+			}(client, msgCopy)
+		}
+	}
+}
+
 var Manager = NewHub()
 
 // HandleConnection menangani permintaan upgrade ke WebSocket.
@@ -139,4 +182,3 @@ func HandleConnection(c *gin.Context) {
 	// Jalankan writePump di goroutine terpisah untuk setiap client
 	go client.writePump()
 }
-

@@ -60,6 +60,8 @@ type DirectoryScanPayload struct {
 	Headers        []string `json:"headers"`
 	Method         string   `json:"method"`
 	OutputFormat   string   `json:"outputFormat"`
+	UserAgent      string   `json:"userAgent"`
+	UserAgentLabel string   `json:"userAgentLabel"`
 }
 
 func EnqueueSubdomainScan(payload SubdomainScanPayload) {

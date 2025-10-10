@@ -165,6 +165,8 @@ body {
     background: rgba(15, 23, 42, 0.6);
     border: 1px solid rgba(56, 189, 248, 0.1);
     min-height: 6rem;
+    max-height: 22rem;
+    overflow-y: auto;
     white-space: pre-wrap;
     font-family: "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }

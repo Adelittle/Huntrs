@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,12 +66,53 @@ type DirectoryScanPayload struct {
 	Headers        []string `json:"headers"`
 	Method         string   `json:"method"`
 	OutputFormat   string   `json:"outputFormat"`
+	UserAgent      string   `json:"userAgent"`
+	UserAgentLabel string   `json:"userAgentLabel"`
 }
 
 func sendUpdate(username, tool, updateType, message string) {
 	update := map[string]string{"username": username, "tool": tool, "type": updateType, "message": message}
 	payload, _ := json.Marshal(update)
 	rdb.Publish(context.Background(), redisPubSubChannel, payload)
+}
+
+func downloadTempWordlist(source string) (string, func(), error) {
+	parsed, err := url.Parse(source)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "", func() {}, fmt.Errorf("invalid wordlist URL")
+	}
+
+	resp, err := http.Get(source)
+	if err != nil {
+		return "", func() {}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", func() {}, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+	}
+
+	destDir := filepath.Join("scan_results", "wordlists")
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return "", func() {}, err
+	}
+
+	tempFile, err := os.CreateTemp(destDir, "ffuf-url-wordlist-*.txt")
+	if err != nil {
+		return "", func() {}, err
+	}
+	defer tempFile.Close()
+
+	if _, err := io.Copy(tempFile, resp.Body); err != nil {
+		os.Remove(tempFile.Name())
+		return "", func() {}, err
+	}
+
+	cleanup := func() {
+		os.Remove(tempFile.Name())
+	}
+
+	return tempFile.Name(), cleanup, nil
 }
 
 func getSublist3rCommand() []string {
@@ -272,9 +315,31 @@ func handleDirectoryScanTask(ctx context.Context, t *asynq.Task) error {
 	log.Printf("Menerima tugas Directory scan untuk %d target", len(p.Targets))
 	sendUpdate(p.Username, "directory", "info", fmt.Sprintf("Starting ffuf scan for %d target(s)", len(p.Targets)))
 
+	cleanup := func() {}
+	if p.WordlistOption == "url" && p.WordlistURL != "" {
+		sendUpdate(p.Username, "directory", "info", fmt.Sprintf("Mengunduh wordlist dari %s", p.WordlistURL))
+		downloadedPath, tempCleanup, err := downloadTempWordlist(p.WordlistURL)
+		if err != nil {
+			sendUpdate(p.Username, "directory", "error", fmt.Sprintf("Gagal mengunduh wordlist: %v", err))
+			return err
+		}
+		p.Wordlist = downloadedPath
+		cleanup = tempCleanup
+		sendUpdate(p.Username, "directory", "info", "Wordlist siap digunakan untuk pemindaian")
+	}
+	defer cleanup()
+
 	if p.Wordlist == "" {
 		sendUpdate(p.Username, "directory", "error", "Wordlist tidak ditemukan atau kosong")
 		return fmt.Errorf("wordlist kosong")
+	}
+
+	p.Wordlist = filepath.Clean(p.Wordlist)
+
+	if p.UserAgentLabel != "" {
+		sendUpdate(p.Username, "directory", "info", fmt.Sprintf("Menggunakan User-Agent preset: %s", p.UserAgentLabel))
+	} else if p.UserAgent != "" {
+		sendUpdate(p.Username, "directory", "info", fmt.Sprintf("Menggunakan User-Agent kustom: %s", p.UserAgent))
 	}
 
 	resultsDir := "scan_results"
