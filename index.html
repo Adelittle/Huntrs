@@ -382,19 +382,75 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
                             <h3 class="text-xl font-semibold mb-4 text-gray-300">Configuration</h3>
-                            <form id="directoryForm" class="space-y-4">
+                            <form id="directoryForm" class="space-y-4" enctype="multipart/form-data">
                                 <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Mode</label>
+                                    <select id="directoryMode" name="mode"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="single">Single Target</option>
+                                        <option value="bulk">Bulk Targets</option>
+                                        <option value="file">Load from File</option>
+                                    </select>
+                                </div>
+                                <div id="directorySingleTarget">
                                     <label class="block text-sm font-medium text-gray-300 mb-2">Target URL</label>
                                     <input type="text" id="directoryTarget" name="target"
                                         class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        placeholder="https://example.com/FUZZ" required>
+                                        placeholder="https://example.com/FUZZ">
                                     <p class="text-sm text-gray-400 mt-1">Use the FUZZ keyword where ffuf should inject words.</p>
                                 </div>
+                                <div id="directoryBulkTarget" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target URLs (one per line)</label>
+                                    <textarea id="directoryBulkList" name="targets"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent h-24"
+                                        placeholder="https://example.com/FUZZ\nhttps://target.com/FUZZ"></textarea>
+                                    <p class="text-sm text-gray-400 mt-1">Each line should contain a full URL with the FUZZ placeholder.</p>
+                                </div>
+                                <div id="directoryFileTarget" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Upload Target File</label>
+                                    <input type="file" id="directoryFileInput" name="targetFile"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        accept=".txt">
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">HTTP Method</label>
+                                        <select id="directoryMethod" name="method"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                            <option value="GET">GET</option>
+                                            <option value="POST">POST</option>
+                                            <option value="PUT">PUT</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Timeout (-timeout)</label>
+                                        <input type="number" min="0" step="0.1" id="directoryTimeout" name="timeout"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="10">
+                                    </div>
+                                </div>
                                 <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Wordlist Selection</label>
+                                    <select id="directoryWordlistOption" name="wordlistOption"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="small">Small wordlist</option>
+                                        <option value="medium">Medium wordlist</option>
+                                        <option value="large">Large wordlist</option>
+                                        <option value="custom">Custom wordlist path</option>
+                                        <option value="url">Import from URL</option>
+                                    </select>
+                                </div>
+                                <div id="directoryWordlistPathGroup">
                                     <label class="block text-sm font-medium text-gray-300 mb-2">Wordlist Path</label>
                                     <input type="text" id="directoryWordlist" name="wordlist"
                                         class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                        value="/usr/share/wordlists/dirb/common.txt" required>
+                                        value="/usr/share/wordlists/dirb/common.txt">
+                                </div>
+                                <div id="directoryWordlistUrlGroup" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Wordlist URL</label>
+                                    <input type="url" id="directoryWordlistUrl" name="wordlistUrl"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        placeholder="https://example.com/wordlists/custom.txt">
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -424,10 +480,40 @@
                                             value="200,204,301,302,307,401,403">
                                     </div>
                                 </div>
-                                <div class="flex items-center">
-                                    <input type="checkbox" id="directoryRecursive" name="recursive" value="true"
-                                        class="h-4 w-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
-                                    <label for="directoryRecursive" class="ml-2 text-sm text-gray-300">Enable recursion</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Match words (-mw)</label>
+                                        <input type="text" id="directoryMatchWords" name="matchWords"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="100">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Filter words (-fw)</label>
+                                        <input type="text" id="directoryFilterWords" name="filterWords"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="0,1">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" id="directoryRecursive" name="recursive" value="true"
+                                            class="h-4 w-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                        <label for="directoryRecursive" class="ml-2 text-sm text-gray-300">Enable recursion</label>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Recursion depth</label>
+                                        <input type="number" min="1" id="directoryRecursionDepth" name="recursionDepth"
+                                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder="2" disabled>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Output format</label>
+                                    <select id="directoryOutputFormat" name="outputFormat"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="text">Plain text (.txt)</option>
+                                        <option value="html">HTML (.html)</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-300 mb-2">Result File Name</label>
@@ -525,6 +611,138 @@
             });
             if (openSpan) { html += '</span>'; }
             return html;
+        }
+
+        function formDataToObject(formData) {
+            const result = {};
+            formData.forEach((value, key) => {
+                if (Object.prototype.hasOwnProperty.call(result, key)) {
+                    if (!Array.isArray(result[key])) {
+                        result[key] = [result[key]];
+                    }
+                    result[key].push(value);
+                } else {
+                    result[key] = value;
+                }
+            });
+            return result;
+        }
+
+        function summariseTargets(targets, maxItems = 3) {
+            if (!targets || targets.length === 0) return '';
+            const summary = targets.slice(0, maxItems).join(', ');
+            if (targets.length > maxItems) {
+                return `${summary} (+${targets.length - maxItems} more)`;
+            }
+            return summary;
+        }
+
+        function quoteIfNeeded(value) {
+            if (value === undefined || value === null) { return value; }
+            const stringValue = value.toString();
+            return /\s/.test(stringValue) ? `"${stringValue}"` : stringValue;
+        }
+
+        function buildSubdomainCommand(values, context) {
+            const tool = values.tool || 'amass';
+            const mode = values.mode || 'single';
+            const targets = context.targets || [];
+            const source = context.source;
+            const baseCommands = {
+                amass: 'amass enum',
+                assetfinder: 'assetfinder --subs-only',
+                sublist3r: 'sublist3r',
+                subfinder: 'subfinder'
+            };
+            let command = baseCommands[tool] || tool;
+            if (targets.length > 0) {
+                const primary = targets[0];
+                switch (tool) {
+                    case 'amass':
+                        command += ` -d ${quoteIfNeeded(primary)}`;
+                        break;
+                    case 'sublist3r':
+                    case 'subfinder':
+                        command += ` -d ${quoteIfNeeded(primary)}`;
+                        break;
+                    case 'assetfinder':
+                        command += ` ${quoteIfNeeded(primary)}`;
+                        break;
+                    default:
+                        command += ` ${quoteIfNeeded(primary)}`;
+                        break;
+                }
+                if (targets.length > 1) {
+                    command += ` (and ${targets.length - 1} more targets)`;
+                }
+                return command;
+            }
+            if (mode === 'file' && source) {
+                return `${command} (targets from ${quoteIfNeeded(source)})`;
+            }
+            if (mode === 'bulk') {
+                return `${command} (bulk targets)`;
+            }
+            return command;
+        }
+
+        function buildHttpxCommand(values, context) {
+            const parts = ['httpx'];
+            const options = values.options ? (Array.isArray(values.options) ? values.options : [values.options]) : [];
+            options.forEach((opt) => {
+                if (opt) { parts.push(`-${opt}`); }
+            });
+            if (values.method) { parts.push('-x', values.method); }
+            if (values.threads) { parts.push('-threads', values.threads); }
+            if (values.timeout) { parts.push('-timeout', values.timeout); }
+            if (values.filterStatusCodes) { parts.push('-fc', values.filterStatusCodes); }
+            if (values.noColor === 'true') { parts.push('-no-color'); }
+            if (values.followRedirects === 'true') { parts.push('-follow-redirects'); }
+            if (values.fileName) { parts.push('-o', quoteIfNeeded(values.fileName)); }
+            if (context.targets && context.targets.length > 0) {
+                parts.push(`(targets: ${summariseTargets(context.targets)})`);
+            } else if (context.source) {
+                parts.push(`(targets from ${quoteIfNeeded(context.source)})`);
+            }
+            return parts.join(' ');
+        }
+
+        function buildDirectoryCommand(values, context) {
+            const parts = ['ffuf'];
+            if (context.targets && context.targets.length > 0) {
+                const primary = context.targets[0];
+                parts.push('-u', quoteIfNeeded(primary));
+                if (context.targets.length > 1) {
+                    parts.push(`(+${context.targets.length - 1} more targets)`);
+                }
+            }
+            if (values.wordlist) { parts.push('-w', quoteIfNeeded(values.wordlist)); }
+            if (values.method) { parts.push('-X', values.method); }
+            if (values.extensions) { parts.push('-e', values.extensions); }
+            if (values.threads) { parts.push('-t', values.threads); }
+            if (values.delay) { parts.push('-p', values.delay); }
+            if (values.matchCodes) { parts.push('-mc', values.matchCodes); }
+            if (values.matchWords) { parts.push('-mw', values.matchWords); }
+            if (values.filterWords) { parts.push('-fw', values.filterWords); }
+            if (values.timeout) { parts.push('-timeout', values.timeout); }
+            if (values.recursive === 'true') {
+                parts.push('-recursion');
+                if (values.recursionDepth) { parts.push('-recursion-depth', values.recursionDepth); }
+            }
+            if (Array.isArray(values['headers[]'])) {
+                values['headers[]'].forEach((header) => { if (header) { parts.push('-H', quoteIfNeeded(header)); } });
+            } else if (values['headers[]']) {
+                parts.push('-H', quoteIfNeeded(values['headers[]']));
+            }
+            if (values.outputFormat === 'html') { parts.push('-of', 'html'); }
+            if (values.fileName) { parts.push('-o', quoteIfNeeded(values.fileName)); }
+            if (values.wordlistOption === 'url' && values.wordlistUrl) {
+                parts.push(`(wordlist from ${quoteIfNeeded(values.wordlistUrl)})`);
+            }
+            if ((!context.targets || context.targets.length === 0) && context.source) {
+                parts.push(`(targets from ${quoteIfNeeded(context.source)})`);
+            }
+            return parts.join(' ');
         }
 
         function displayInTerminal(terminalId, message, type = 'info') {
@@ -629,9 +847,20 @@
                         const completionTool = (completion && completion.tool) || data.tool;
                         const terminalId = getTerminalIdByTool(completionTool);
                         if (terminalId) {
-                            const fileMessage = completion && completion.fileName ? ` Results saved to ${completion.fileName}` : '';
+                            let fileMessage = '';
+                            if (completion) {
+                                if (Array.isArray(completion.fileNames) && completion.fileNames.length > 0) {
+                                    fileMessage = ` Results saved to ${completion.fileNames.join(', ')}`;
+                                } else if (completion.fileName) {
+                                    fileMessage = ` Results saved to ${completion.fileName}`;
+                                }
+                            }
                             const label = completionTool ? completionTool.toUpperCase() : 'SCAN';
                             displayInTerminal(terminalId, `${label} scan completed.${fileMessage ? ' ' + fileMessage : ''}`, 'success');
+                            if (completionTool === 'directory' && completion && Array.isArray(completion.fileNames) && completion.fileNames.length > 0) {
+                                const loadInput = document.getElementById('loadDirectoryFileName');
+                                if (loadInput) { loadInput.value = completion.fileNames[0]; }
+                            }
                         }
                         return;
                     }
@@ -772,10 +1001,37 @@
                 const resultsDiv = document.getElementById('subdomainResults');
                 resultsDiv.innerHTML = '';
                 const formData = new FormData(this);
-                const fileName = formData.get('fileName') || `subdomain-result-${Date.now()}.txt`;
-                if (!formData.get('fileName')) {
-                    formData.set('fileName', fileName);
-                    document.getElementById('subdomainFileName').value = fileName;
+                const mode = formData.get('mode') || 'single';
+                let targets = [];
+                let sourceLabel = null;
+                if (mode === 'single') {
+                    const single = (formData.get('target') || '').toString().trim();
+                    if (single) {
+                        targets = [single];
+                        formData.set('target', single);
+                    }
+                } else if (mode === 'bulk') {
+                    const bulk = (formData.get('targets') || '').toString();
+                    const cleaned = bulk.split(/\r?\n/).map((t) => t.trim()).filter(Boolean);
+                    targets = cleaned;
+                    formData.set('targets', cleaned.join('\n'));
+                } else if (mode === 'file') {
+                    const fileInput = document.getElementById('subdomainFileInput');
+                    if (fileInput && fileInput.files.length > 0) {
+                        sourceLabel = fileInput.files[0].name;
+                    } else {
+                        sourceLabel = 'uploaded file';
+                    }
+                }
+                let fileName = (formData.get('fileName') || '').toString().trim();
+                if (!fileName) {
+                    fileName = `subdomain-result-${Date.now()}.txt`;
+                }
+                formData.set('fileName', fileName);
+                document.getElementById('subdomainFileName').value = fileName;
+                const command = buildSubdomainCommand(formDataToObject(formData), { targets, source: sourceLabel });
+                if (command) {
+                    displayInTerminal('subdomainResults', `Running scan with command: ${command}`, 'info');
                 }
                 displayInTerminal('subdomainResults', `Starting new scan. Results will be saved to ${fileName}`, 'info');
                 try {
@@ -817,18 +1073,43 @@
                 const resultsDiv = document.getElementById('httpxResults');
                 resultsDiv.innerHTML = '';
                 const formData = new FormData(this);
-                const fileName = formData.get('fileName') || `httpx-result-${Date.now()}.txt`;
-                if (!formData.get('fileName')) {
-                     formData.set('fileName', fileName);
-                     document.getElementById('httpxFileName').value = fileName;
+                const mode = formData.get('mode') || 'single';
+                let targets = [];
+                let sourceLabel = null;
+                if (mode === 'single') {
+                    const single = (formData.get('target') || '').toString().trim();
+                    if (single) {
+                        targets = [single];
+                        formData.set('target', single);
+                    }
+                } else if (mode === 'bulk') {
+                    const bulk = (formData.get('targets') || '').toString();
+                    const cleaned = bulk.split(/\r?\n/).map((t) => t.trim()).filter(Boolean);
+                    targets = cleaned;
+                    formData.set('targets', cleaned.join('\n'));
+                } else if (mode === 'file') {
+                    const fileInput = document.getElementById('httpxFileInput');
+                    if (fileInput && fileInput.files.length > 0) {
+                        sourceLabel = fileInput.files[0].name;
+                    } else {
+                        sourceLabel = 'uploaded file';
+                    }
                 }
+                let fileName = (formData.get('fileName') || '').toString().trim();
+                if (!fileName) {
+                    fileName = `httpx-result-${Date.now()}.txt`;
+                }
+                formData.set('fileName', fileName);
+                document.getElementById('httpxFileName').value = fileName;
                 httpxAliveCount = 0; httpxDeadCount = 0;
                 document.getElementById('httpxAlive').textContent = '0';
                 document.getElementById('httpxDead').textContent = '0';
-                let total = 0;
-                if (formData.get('mode') === 'single') { total = formData.get('target') ? 1 : 0; }
-                else if (formData.get('mode') === 'bulk') { total = formData.get('targets').split('\n').filter(Boolean).length; }
-                document.getElementById('httpxTotal').textContent = total.toString();
+                const total = targets.length;
+                document.getElementById('httpxTotal').textContent = total > 0 ? total.toString() : (sourceLabel ? 'file' : '0');
+                const command = buildHttpxCommand(formDataToObject(formData), { targets, source: sourceLabel });
+                if (command) {
+                    displayInTerminal('httpxResults', `Running scan with command: ${command}`, 'info');
+                }
                 displayInTerminal('httpxResults', `Starting new HTTPx probe. Results will be saved to ${fileName}`, 'info');
                 try {
                     const response = await fetch(`${apiUrl}/scan/httpx`, {
@@ -862,6 +1143,104 @@
             // Directory Tools
             const directoryHeadersContainer = document.getElementById('directoryHeaders');
             const addHeaderButton = document.getElementById('addHeaderField');
+            const directoryModeSelect = document.getElementById('directoryMode');
+            const directoryTargetInput = document.getElementById('directoryTarget');
+            const directoryBulkList = document.getElementById('directoryBulkList');
+            const directoryFileInput = document.getElementById('directoryFileInput');
+            const directoryWordlistOption = document.getElementById('directoryWordlistOption');
+            const directoryWordlistInput = document.getElementById('directoryWordlist');
+            const directoryWordlistUrlInput = document.getElementById('directoryWordlistUrl');
+            const directoryWordlistPathGroup = document.getElementById('directoryWordlistPathGroup');
+            const directoryWordlistUrlGroup = document.getElementById('directoryWordlistUrlGroup');
+            const directoryRecursiveCheckbox = document.getElementById('directoryRecursive');
+            const directoryRecursionDepth = document.getElementById('directoryRecursionDepth');
+            const directoryOutputFormat = document.getElementById('directoryOutputFormat');
+            const directoryFileNameInput = document.getElementById('directoryFileName');
+
+            const wordlistPresets = {
+                small: '/usr/share/wordlists/dirb/common.txt',
+                medium: '/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt',
+                large: '/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'
+            };
+
+            function updateDirectoryMode(mode) {
+                document.getElementById('directorySingleTarget').classList.toggle('hidden', mode !== 'single');
+                document.getElementById('directoryBulkTarget').classList.toggle('hidden', mode !== 'bulk');
+                document.getElementById('directoryFileTarget').classList.toggle('hidden', mode !== 'file');
+                if (directoryTargetInput) directoryTargetInput.required = mode === 'single';
+                if (directoryBulkList) directoryBulkList.required = mode === 'bulk';
+                if (directoryFileInput) directoryFileInput.required = mode === 'file';
+            }
+
+            function updateWordlistControls(option) {
+                if (!directoryWordlistInput) { return; }
+                if (option === 'url') {
+                    if (directoryWordlistPathGroup) { directoryWordlistPathGroup.classList.add('hidden'); }
+                    if (directoryWordlistUrlGroup) { directoryWordlistUrlGroup.classList.remove('hidden'); }
+                    if (directoryWordlistUrlInput) {
+                        directoryWordlistUrlInput.required = true;
+                    }
+                    directoryWordlistInput.readOnly = true;
+                    directoryWordlistInput.required = false;
+                    directoryWordlistInput.value = '';
+                } else {
+                    if (directoryWordlistPathGroup) { directoryWordlistPathGroup.classList.remove('hidden'); }
+                    if (directoryWordlistUrlGroup) { directoryWordlistUrlGroup.classList.add('hidden'); }
+                    if (directoryWordlistUrlInput) {
+                        directoryWordlistUrlInput.required = false;
+                        directoryWordlistUrlInput.value = '';
+                    }
+                    const presetValue = wordlistPresets[option];
+                    if (presetValue) {
+                        directoryWordlistInput.value = presetValue;
+                        directoryWordlistInput.readOnly = true;
+                    } else {
+                        directoryWordlistInput.readOnly = false;
+                    }
+                    directoryWordlistInput.required = true;
+                }
+            }
+
+            function syncDirectoryRecursion() {
+                if (!directoryRecursionDepth || !directoryRecursiveCheckbox) return;
+                const enabled = directoryRecursiveCheckbox.checked;
+                directoryRecursionDepth.disabled = !enabled;
+                if (!enabled) {
+                    directoryRecursionDepth.value = '';
+                }
+            }
+
+            function syncDirectoryFileNameWithFormat() {
+                if (!directoryFileNameInput || !directoryOutputFormat) return;
+                const format = directoryOutputFormat.value;
+                const desiredExt = format === 'html' ? '.html' : '.txt';
+                const currentValue = directoryFileNameInput.value.trim();
+                if (currentValue) {
+                    if (!currentValue.toLowerCase().endsWith(desiredExt)) {
+                        const withoutExt = currentValue.replace(/\.[^/.]+$/, '');
+                        directoryFileNameInput.value = `${withoutExt}${desiredExt}`;
+                    }
+                } else {
+                    directoryFileNameInput.placeholder = format === 'html' ? 'directory-result.html' : 'directory-result.txt';
+                }
+            }
+
+            if (directoryModeSelect) {
+                directoryModeSelect.addEventListener('change', () => updateDirectoryMode(directoryModeSelect.value));
+                updateDirectoryMode(directoryModeSelect.value);
+            }
+            if (directoryWordlistOption) {
+                directoryWordlistOption.addEventListener('change', () => updateWordlistControls(directoryWordlistOption.value));
+                updateWordlistControls(directoryWordlistOption.value);
+            }
+            if (directoryRecursiveCheckbox) {
+                directoryRecursiveCheckbox.addEventListener('change', syncDirectoryRecursion);
+                syncDirectoryRecursion();
+            }
+            if (directoryOutputFormat) {
+                directoryOutputFormat.addEventListener('change', syncDirectoryFileNameWithFormat);
+                syncDirectoryFileNameWithFormat();
+            }
             function updateHeaderRemoveButtons() {
                 if (!directoryHeadersContainer) return;
                 const rows = directoryHeadersContainer.querySelectorAll('.header-row');
@@ -907,12 +1286,39 @@
                 const resultsDiv = document.getElementById('directoryResults');
                 resultsDiv.innerHTML = '';
                 const formData = new FormData(this);
-                let fileName = formData.get('fileName');
-                if (!fileName) {
-                    fileName = `directory-result-${Date.now()}.txt`;
-                    formData.set('fileName', fileName);
-                    document.getElementById('directoryFileName').value = fileName;
+                const mode = formData.get('mode') || 'single';
+                let targets = [];
+                let sourceLabel = null;
+                if (mode === 'single') {
+                    const single = (formData.get('target') || '').toString().trim();
+                    if (single) {
+                        targets = [single];
+                        formData.set('target', single);
+                    }
+                } else if (mode === 'bulk') {
+                    const bulk = (formData.get('targets') || '').toString();
+                    const cleaned = bulk.split(/\r?\n/).map((t) => t.trim()).filter(Boolean);
+                    targets = cleaned;
+                    formData.set('targets', cleaned.join('\n'));
+                } else if (mode === 'file') {
+                    const fileInput = directoryFileInput;
+                    if (fileInput && fileInput.files.length > 0) {
+                        sourceLabel = fileInput.files[0].name;
+                    } else {
+                        sourceLabel = 'uploaded file';
+                    }
                 }
+                const outputFormat = (formData.get('outputFormat') || 'text').toString();
+                let fileName = (formData.get('fileName') || '').toString().trim();
+                const desiredExt = outputFormat === 'html' ? '.html' : '.txt';
+                if (!fileName) {
+                    fileName = `directory-result-${Date.now()}${desiredExt}`;
+                } else if (!fileName.toLowerCase().endsWith(desiredExt)) {
+                    const withoutExt = fileName.replace(/\.[^/.]+$/, '');
+                    fileName = `${withoutExt}${desiredExt}`;
+                }
+                formData.set('fileName', fileName);
+                directoryFileNameInput.value = fileName;
                 formData.delete('recursive');
                 formData.set('recursive', document.getElementById('directoryRecursive').checked ? 'true' : 'false');
                 formData.delete('headers[]');
@@ -926,7 +1332,18 @@
                         formData.append('headers[]', `${headerName}: ${headerValue}`);
                     }
                 });
+                if (directoryWordlistInput) {
+                    formData.set('wordlist', directoryWordlistInput.value.trim());
+                }
+                if (directoryWordlistUrlInput) {
+                    const urlValue = directoryWordlistUrlInput.value.trim();
+                    formData.set('wordlistUrl', urlValue);
+                }
                 document.getElementById('loadDirectoryFileName').value = fileName;
+                const command = buildDirectoryCommand(formDataToObject(formData), { targets, source: sourceLabel });
+                if (command) {
+                    displayInTerminal('directoryResults', `Running scan with command: ${command}`, 'info');
+                }
                 displayInTerminal('directoryResults', `Starting ffuf scan. Results will be saved to ${fileName}`, 'info');
                 try {
                     const response = await fetch(`${apiUrl}/scan/directory`, {

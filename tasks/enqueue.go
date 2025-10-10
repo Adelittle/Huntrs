@@ -41,16 +41,25 @@ type HttpxScanPayload struct {
 }
 
 type DirectoryScanPayload struct {
-	Target     string   `json:"target"`
-	Wordlist   string   `json:"wordlist"`
-	FileName   string   `json:"fileName"`
-	Username   string   `json:"username"`
-	Extensions string   `json:"extensions"`
-	Threads    string   `json:"threads"`
-	Delay      string   `json:"delay"`
-	MatchCodes string   `json:"matchCodes"`
-	Recursive  bool     `json:"recursive"`
-	Headers    []string `json:"headers"`
+	Targets        []string `json:"targets"`
+	TargetMode     string   `json:"targetMode"`
+	Wordlist       string   `json:"wordlist"`
+	WordlistOption string   `json:"wordlistOption"`
+	WordlistURL    string   `json:"wordlistUrl"`
+	FileName       string   `json:"fileName"`
+	Username       string   `json:"username"`
+	Extensions     string   `json:"extensions"`
+	Threads        string   `json:"threads"`
+	Delay          string   `json:"delay"`
+	MatchCodes     string   `json:"matchCodes"`
+	MatchWords     string   `json:"matchWords"`
+	FilterWords    string   `json:"filterWords"`
+	Timeout        string   `json:"timeout"`
+	Recursive      bool     `json:"recursive"`
+	RecursionDepth string   `json:"recursionDepth"`
+	Headers        []string `json:"headers"`
+	Method         string   `json:"method"`
+	OutputFormat   string   `json:"outputFormat"`
 }
 
 func EnqueueSubdomainScan(payload SubdomainScanPayload) {
