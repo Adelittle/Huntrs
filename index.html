@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Bounty Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .terminal {
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Login Screen -->
+    <div id="loginScreen"
+        class="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-700">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                    🔒 Bug Bounty Hub</h1>
+                <p class="text-gray-400 mt-2">Security Research Dashboard</p>
+            </div>
+            <div id="loginError" class="text-red-400 text-center mb-4 hidden"></div>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                    <input type="text" id="username"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter username" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                    <input type="password" id="password"
+                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Enter password" required>
+                </div>
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden">
+        <!-- Navigation -->
+        <nav class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1
+                        class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                        🔒 Bug Bounty Hub</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-300">Welcome, <span class="text-green-400 font-semibold"
+                            id="currentUser"></span></span>
+                    <button id="logoutBtn"
+                        class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition duration-300">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar & Main Content -->
+        <div class="flex">
+            <aside class="w-64 bg-gray-800 min-h-screen p-6">
+                <nav class="space-y-2">
+                    <button class="nav-btn w-full text-left px-4 py-3 rounded-lg bg-purple-600 text-white"
+                        data-section="dashboard">📊 Dashboard</button>
+                    <button class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 text-gray-300"
+                        data-section="subdomain">🌐 Subdomain Tools</button>
+                    <button class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 text-gray-300"
+                        data-section="httpx">🌐 HTTPx Probe</button>
+                    <button class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 text-gray-300"
+                        data-section="directory">📁 Directory Tools</button>
+                </nav>
+            </aside>
+
+            <main class="flex-1 p-6">
+                <!-- Dashboard Section -->
+                <div id="dashboardSection" class="section">
+                    <h2
+                        class="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                        System Overview</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-300">🖥️ CPU Usage</h3>
+                                <span class="text-2xl font-bold text-blue-400" id="cpuValue">...</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-3">
+                                <div id="cpuBar"
+                                    class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full progress-bar"
+                                    style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-300">🧠 RAM Usage</h3>
+                                <span class="text-2xl font-bold text-green-400" id="ramValue">...</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-3">
+                                <div id="ramBar"
+                                    class="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full progress-bar"
+                                    style="width: 0%"></div>
+                            </div>
+                            <p class="text-sm text-gray-400 mt-2" id="ramText">... of ...</p>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold text-gray-300">💾 Storage</h3>
+                                <span class="text-2xl font-bold text-yellow-400" id="storageValue">...</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-3">
+                                <div id="storageBar"
+                                    class="bg-gradient-to-r from-yellow-500 to-red-500 h-3 rounded-full progress-bar"
+                                    style="width: 0%"></div>
+                            </div>
+                            <p class="text-sm text-gray-400 mt-2" id="storageText">... of ...</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-300">🔧 Tool Installation Status</h3>
+                        <div id="toolStatusContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subdomain Tools Section -->
+                <div id="subdomainSection" class="section hidden">
+                     <h2
+                        class="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                        🌐 Subdomain Enumeration</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-300">Configuration</h3>
+                            <form id="subdomainForm" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Mode</label>
+                                    <select id="subdomainMode" name="mode"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="single">Single Target</option>
+                                        <option value="bulk">Bulk Targets</option>
+                                        <option value="file">Load from File</option>
+                                    </select>
+                                </div>
+                                <div id="subdomainSingleTarget">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Domain</label>
+                                    <input type="text" id="subdomainTarget" name="target"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="example.com">
+                                </div>
+                                <div id="subdomainBulkTarget" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Domains (one per
+                                        line)</label>
+                                    <textarea id="subdomainBulkList" name="targets"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 h-24"
+                                        placeholder="example.com&#10;target.com"></textarea>
+                                </div>
+                                <div id="subdomainFileTarget" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Upload Target
+                                        File</label>
+                                    <input type="file" id="subdomainFileInput" name="targetFile"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        accept=".txt">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Tool Selection</label>
+                                    <select id="subdomainTool" name="tool"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="amass">Amass</option>
+                                        <option value="assetfinder">Assetfinder</option>
+                                        <option value="sublist3r">Sublist3r</option>
+                                        <option value="subfinder">Subfinder</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Save File Name
+                                        (Optional)</label>
+                                    <input type="text" id="subdomainFileName" name="fileName"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="subdomain_results.txt">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button type="submit"
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                                        🚀 Start Scan
+                                    </button>
+                                    <button type="button" id="subdomainStopBtn"
+                                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                                        🛑 Stop Scan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-semibold text-gray-300">Live Results</h3>
+                                <a href="#" id="clearSubdomainResult" class="text-sm text-gray-500 hover:text-gray-300">Clear Result</a>
+                            </div>
+                            <div id="subdomainResults" class="terminal p-4 rounded-lg h-64 overflow-y-auto text-sm">
+                                <div class="text-gray-400">Ready to scan subdomains...</div>
+                            </div>
+                            <div class="mt-4 flex flex-col gap-2">
+                                <form id="loadResultForm" class="flex gap-2">
+                                    <input type="text" id="loadFileName"
+                                        class="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="Enter filename...">
+                                    <button type="submit"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                                        Load
+                                    </button>
+                                </form>
+                                <div>
+                                     <button type="button" id="extractResultBtn"
+                                        class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                                        💾 Extract Result
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HTTPx Probe Section -->
+                <div id="httpxSection" class="section hidden">
+                    <h2
+                        class="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                        🌐 HTTPx Probe</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-300">Configuration</h3>
+                            <form id="httpxForm" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Mode</label>
+                                    <select id="httpxMode" name="mode"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                        <option value="single">Single Target</option>
+                                        <option value="bulk">Bulk Targets</option>
+                                        <option value="file">Load from File</option>
+                                    </select>
+                                </div>
+                                <div id="httpxSingleTarget">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target URL/Domain</label>
+                                    <input type="text" id="httpxTarget" name="target"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="example.com">
+                                </div>
+                                <div id="httpxBulkTarget" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Target URLs/Domains (one
+                                        per line)</label>
+                                    <textarea id="httpxBulkList" name="targets"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 h-24"
+                                        placeholder="example.com&#10;test.org"></textarea>
+                                </div>
+                                <div id="httpxFileTarget" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Upload Target
+                                        File</label>
+                                    <input type="file" id="httpxFileInput" name="targetFile"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        accept=".txt">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Probe Options</label>
+                                    <div class="grid grid-cols-2 gap-2 text-sm">
+                                        <label class="flex items-center text-gray-300"><input type="checkbox" name="options" value="status-code" class="mr-2 text-purple-500" checked> Status Code</label>
+                                        <label class="flex items-center text-gray-300"><input type="checkbox" name="options" value="title" class="mr-2 text-purple-500" checked> Page Title</label>
+                                        <label class="flex items-center text-gray-300"><input type="checkbox" name="options" value="tech-detect" class="mr-2 text-purple-500" checked> Technology</label>
+                                        <label class="flex items-center text-gray-300"><input type="checkbox" name="options" value="web-server" class="mr-2 text-purple-500"> Server</label>
+                                        <label class="flex items-center text-gray-300"><input type="checkbox" name="options" value="content-length" class="mr-2 text-purple-500"> Content Length</label>
+                                        <label class="flex items-center text-gray-300"><input type="checkbox" name="noColor" value="true" class="mr-2 text-purple-500"> No Color</label>
+                                    </div>
+                                </div>
+
+                                <div class="bg-gray-700/50 p-4 rounded-lg space-y-4">
+                                     <h4 class="text-md font-semibold text-gray-300">Advanced Options</h4>
+                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-300 mb-2">Follow Redirects</label>
+                                            <label class="flex items-center text-gray-300"><input type="checkbox" name="followRedirects" value="true" class="mr-2 text-purple-500"> Enable</label>
+                                        </div>
+                                         <div>
+                                            <label class="block text-sm font-medium text-gray-300 mb-2">HTTP Method</label>
+                                             <select name="method" class="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-sm">
+                                                 <option value="">Default (GET)</option>
+                                                 <option value="GET,POST">GET, POST</option>
+                                                 <option value="GET,POST,PUT">GET, POST, PUT</option>
+                                             </select>
+                                        </div>
+                                     </div>
+                                     <div>
+                                        <label class="block text-sm font-medium text-gray-300 mb-2">Filter Status Codes</label>
+                                        <input type="text" name="filterStatusCodes" class="w-full px-4 py-2 bg-gray-600 border border-gray-500 rounded-lg text-sm" placeholder="e.g., 200,301,403">
+                                     </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Save File Name
+                                        (Optional)</label>
+                                    <input type="text" id="httpxFileName" name="fileName"
+                                        class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="httpx_results.txt">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 pt-2">
+                                    <button type="submit"
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                                        🚀 Start Probe
+                                    </button>
+                                     <button type="button" id="httpxStopBtn"
+                                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                                        🛑 Stop Scan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-semibold text-gray-300">Live Results</h3>
+                                <a href="#" id="clearHttpxResult" class="text-sm text-gray-500 hover:text-gray-300">Clear Result</a>
+                            </div>
+                            <div id="httpxResults" class="terminal p-4 rounded-lg flex-grow overflow-y-auto text-sm">
+                                <div class="text-gray-400">Ready to probe...</div>
+                            </div>
+                            <div class="mt-4 grid grid-cols-3 gap-4 text-center">
+                                <div class="bg-gray-700 p-3 rounded-lg">
+                                    <div class="text-2xl font-bold text-green-400" id="httpxAlive">0</div>
+                                    <div class="text-xs text-gray-400">Alive</div>
+                                </div>
+                                <div class="bg-gray-700 p-3 rounded-lg">
+                                    <div class="text-2xl font-bold text-red-400" id="httpxDead">0</div>
+                                    <div class="text-xs text-gray-400">Dead</div>
+                                </div>
+                                <div class="bg-gray-700 p-3 rounded-lg">
+                                    <div class="text-2xl font-bold text-blue-400" id="httpxTotal">0</div>
+                                    <div class="text-xs text-gray-400">Total</div>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex flex-col gap-2">
+                               <form id="loadHttpxResultForm" class="flex gap-2">
+                                    <input type="text" id="loadHttpxFileName"
+                                        class="flex-grow px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="Enter filename...">
+                                    <button type="submit"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                                        Load
+                                    </button>
+                                </form>
+                                <div>
+                                     <button type="button" id="extractHttpxResultBtn"
+                                        class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                                        💾 Extract Result
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Directory Tools Section -->
+                <div id="directorySection" class="section hidden">
+                    <h2
+                        class="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                        Work in Progress</h2>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = `http://${window.location.hostname}:3000/api`;
+        const wsUrl = `ws://${window.location.hostname}:3000/ws`;
+        let socket;
+        let statsInterval;
+        let httpxAliveCount = 0;
+        let httpxDeadCount = 0;
+
+        // --- Helper Functions ---
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function ansiToHtml(text) {
+            const ansiRegex = /\[(\d+)(;(\d+))?m/g;
+            const colorMap = { '30': '#000', '31': '#FF5555', '32': '#50FA7B', '33': '#F1FA8C', '34': '#6272A4', '35': '#FF79C6', '36': '#8BE9FD', '37': '#F8F8F2' };
+            let openSpan = false;
+            let html = text.replace(/\x1b/g, '').replace(ansiRegex, (match, code) => {
+                if (code === '0') { if (openSpan) { openSpan = false; return '</span>'; } return ''; }
+                const color = colorMap[code];
+                if (color) { let tag = ''; if (openSpan) { tag += '</span>'; } tag += `<span style="color: ${color};">`; openSpan = true; return tag; }
+                return '';
+            });
+            if (openSpan) { html += '</span>'; }
+            return html;
+        }
+
+        function displayInTerminal(terminalId, message, type = 'info') {
+            const terminal = document.getElementById(terminalId);
+            if (!terminal) return;
+            const cleanMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            if (type === 'data') {
+                terminal.innerHTML += `<div>${ansiToHtml(cleanMessage)}</div>`;
+            } else {
+                let color = 'text-gray-400';
+                if (type === 'info') color = 'text-yellow-400';
+                if (type === 'error') color = 'text-red-400';
+                if (type === 'success') color = 'text-cyan-400';
+                terminal.innerHTML += `<div class="${color}">${cleanMessage}</div>`;
+            }
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        async function loadResultByFilename(fileName, terminalId) {
+            const token = localStorage.getItem('jwtToken');
+            if (!fileName) { displayInTerminal(terminalId, 'Please enter a file name to load.', 'error'); return; }
+            const terminal = document.getElementById(terminalId);
+            terminal.innerHTML = '';
+            displayInTerminal(terminalId, `Loading results from ${fileName}...`, 'info');
+            try {
+                const response = await fetch(`${apiUrl}/results/load`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName })
+                });
+                const data = await response.json();
+                terminal.innerHTML = '';
+                if (response.ok) {
+                    displayInTerminal(terminalId, `--- Results from ${fileName} ---`, 'success');
+                    data.content.split('\n').forEach(line => {
+                        if (line.trim()) {
+                            let type = 'data';
+                            if (line.includes('---')) type = 'info';
+                            if (line.includes('gagal') || line.includes('error')) type = 'error';
+                            displayInTerminal(terminalId, line, type);
+                        }
+                    });
+                } else {
+                    displayInTerminal(terminalId, `Error loading file: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                displayInTerminal(terminalId, `Failed to send request: ${error.message}`, 'error');
+            }
+        }
+        
+        async function extractResultByFilename(fileName, terminalId) {
+            const token = localStorage.getItem('jwtToken');
+            if (!fileName) {
+                displayInTerminal(terminalId, 'Please enter a file name in the input box to extract.', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`${apiUrl}/results/extract`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName })
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none'; a.href = url; a.download = fileName;
+                    document.body.appendChild(a); a.click();
+                    window.URL.revokeObjectURL(url); a.remove();
+                } else {
+                    const errorData = await response.json();
+                    displayInTerminal(terminalId, `Error extracting file: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                displayInTerminal(terminalId, `Failed to send request: ${error.message}`, 'error');
+            }
+        }
+
+
+        // --- WebSocket ---
+        function connectWebSocket(token) {
+            return new Promise((resolve, reject) => {
+                if (socket && socket.readyState === WebSocket.OPEN) { resolve(); return; }
+                socket = new WebSocket(`${wsUrl}?token=${token}`);
+                socket.onopen = () => { console.log("WebSocket connection established."); resolve(); };
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type) {
+                        const activeSection = document.querySelector('.section:not(.hidden)');
+                        if (!activeSection) return;
+                        const resultsDiv = activeSection.querySelector('.terminal');
+                        if (resultsDiv) {
+                            displayInTerminal(resultsDiv.id, data.message, data.type);
+                            if (resultsDiv.id === 'httpxResults' && data.type === 'data') {
+                                 if (/\[\d{3}\]/.test(data.message) && !data.message.startsWith('http') && !data.message.includes('failed')) {
+                                   httpxAliveCount++;
+                                   document.getElementById('httpxAlive').textContent = httpxAliveCount.toString();
+                                } else if (data.message.includes('failed')) {
+                                   httpxDeadCount++;
+                                   document.getElementById('httpxDead').textContent = httpxDeadCount.toString();
+                                }
+                            }
+                        }
+                    }
+                };
+                socket.onclose = () => { console.log("WebSocket connection closed."); };
+                socket.onerror = (error) => { console.error("WebSocket error:", error); reject(error); };
+            });
+        }
+
+        // --- Authentication & Initialization ---
+        function logout() {
+            localStorage.removeItem('jwtToken');
+            if (socket) socket.close();
+            if (statsInterval) clearInterval(statsInterval);
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        async function checkLoginStatus() {
+            const token = localStorage.getItem('jwtToken');
+            if (token) {
+                try {
+                    const decodedToken = JSON.parse(atob(token.split('.')[1]));
+                    const isExpired = decodedToken.exp * 1000 < Date.now();
+                    if (isExpired) { logout(); return; }
+                    
+                    document.getElementById('currentUser').textContent = decodedToken.username;
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+
+                    await connectWebSocket(token);
+
+                    fetchSystemStats();
+                    fetchToolStatus();
+                    if (statsInterval) clearInterval(statsInterval);
+                    statsInterval = setInterval(fetchSystemStats, 3000);
+                    
+                    const statusResponse = await fetch(`${apiUrl}/user/status`, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if(statusResponse.ok) {
+                        const statusData = await statusResponse.json();
+                        if (statusData.activeScans && statusData.activeScans.subdomain) {
+                            loadResultByFilename(statusData.activeScans.subdomain, 'subdomainResults');
+                        }
+                        if (statusData.activeScans && statusData.activeScans.httpx) {
+                            loadResultByFilename(statusData.activeScans.httpx, 'httpxResults');
+                        }
+                    } else {
+                         console.error("Failed to get user status:", statusResponse.statusText);
+                    }
+                } catch (e) {
+                    console.error("Critical login check error (e.g., bad token), logging out:", e);
+                    logout();
+                }
+            }
+        }
+
+        // --- Event Listener Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            document.getElementById('loginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const loginError = document.getElementById('loginError');
+                try {
+                    const response = await fetch(`${apiUrl}/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        loginError.classList.add('hidden');
+                        localStorage.setItem('jwtToken', data.token);
+                        await checkLoginStatus();
+                    } else {
+                        loginError.textContent = data.error || 'Login failed';
+                        loginError.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    loginError.textContent = 'Could not connect to the server.';
+                    loginError.classList.remove('hidden');
+                }
+            });
+
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const section = this.dataset.section;
+                    document.querySelectorAll('.nav-btn').forEach(b => {
+                        b.classList.remove('bg-purple-600', 'text-white');
+                        b.classList.add('hover:bg-gray-700', 'text-gray-300');
+                    });
+                    this.classList.add('bg-purple-600', 'text-white');
+                    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+                    document.getElementById(section + 'Section').classList.remove('hidden');
+                });
+            });
+
+            // Subdomain Tools
+            document.getElementById('subdomainMode').addEventListener('change', function () {
+                const mode = this.value;
+                document.getElementById('subdomainSingleTarget').classList.toggle('hidden', mode !== 'single');
+                document.getElementById('subdomainBulkTarget').classList.toggle('hidden', mode !== 'bulk');
+                document.getElementById('subdomainFileTarget').classList.toggle('hidden', mode !== 'file');
+            });
+            document.getElementById('subdomainForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const token = localStorage.getItem('jwtToken');
+                if (!token) { logout(); return; }
+                const resultsDiv = document.getElementById('subdomainResults');
+                resultsDiv.innerHTML = '';
+                const formData = new FormData(this);
+                const fileName = formData.get('fileName') || `subdomain-result-${Date.now()}.txt`;
+                if (!formData.get('fileName')) {
+                    formData.set('fileName', fileName);
+                    document.getElementById('subdomainFileName').value = fileName;
+                }
+                displayInTerminal('subdomainResults', `Starting new scan. Results will be saved to ${fileName}`, 'info');
+                try {
+                    const response = await fetch(`${apiUrl}/scan/subdomain`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                    if (response.ok) {
+                         displayInTerminal('subdomainResults', `Request accepted! Waiting for live results...`, 'success');
+                    } else {
+                        const data = await response.json();
+                        displayInTerminal('subdomainResults', `Error: ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    displayInTerminal('subdomainResults', `Failed to send request: ${error.message}`, 'error');
+                }
+            });
+            document.getElementById('loadResultForm').addEventListener('submit', (e) => { e.preventDefault(); loadResultByFilename(document.getElementById('loadFileName').value, 'subdomainResults'); });
+            document.getElementById('extractResultBtn').addEventListener('click', () => { extractResultByFilename(document.getElementById('loadFileName').value, 'subdomainResults'); });
+            document.getElementById('clearSubdomainResult').addEventListener('click', async (e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('jwtToken');
+                document.getElementById('subdomainResults').innerHTML = `<div class="text-gray-400">Ready to scan subdomains...</div>`;
+                await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'subdomain' }) });
+            });
+
+            // HTTPx Probe Tools
+            document.getElementById('httpxMode').addEventListener('change', function () {
+                const mode = this.value;
+                document.getElementById('httpxSingleTarget').classList.toggle('hidden', mode !== 'single');
+                document.getElementById('httpxBulkTarget').classList.toggle('hidden', mode !== 'bulk');
+                document.getElementById('httpxFileTarget').classList.toggle('hidden', mode !== 'file');
+            });
+            document.getElementById('httpxForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const token = localStorage.getItem('jwtToken');
+                if (!token) { logout(); return; }
+                const resultsDiv = document.getElementById('httpxResults');
+                resultsDiv.innerHTML = '';
+                const formData = new FormData(this);
+                const fileName = formData.get('fileName') || `httpx-result-${Date.now()}.txt`;
+                if (!formData.get('fileName')) {
+                     formData.set('fileName', fileName);
+                     document.getElementById('httpxFileName').value = fileName;
+                }
+                httpxAliveCount = 0; httpxDeadCount = 0;
+                document.getElementById('httpxAlive').textContent = '0';
+                document.getElementById('httpxDead').textContent = '0';
+                let total = 0;
+                if (formData.get('mode') === 'single') { total = formData.get('target') ? 1 : 0; }
+                else if (formData.get('mode') === 'bulk') { total = formData.get('targets').split('\n').filter(Boolean).length; }
+                document.getElementById('httpxTotal').textContent = total.toString();
+                displayInTerminal('httpxResults', `Starting new HTTPx probe. Results will be saved to ${fileName}`, 'info');
+                try {
+                    const response = await fetch(`${apiUrl}/scan/httpx`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                    if (response.ok) {
+                        displayInTerminal('httpxResults', `Request accepted! Waiting for live results...`, 'success');
+                    } else {
+                        const data = await response.json();
+                        displayInTerminal('httpxResults', `Error: ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    displayInTerminal('httpxResults', `Failed to send request: ${error.message}`, 'error');
+                }
+            });
+            document.getElementById('loadHttpxResultForm').addEventListener('submit', (e) => { e.preventDefault(); loadResultByFilename(document.getElementById('loadHttpxFileName').value, 'httpxResults'); });
+            document.getElementById('extractHttpxResultBtn').addEventListener('click', () => { extractResultByFilename(document.getElementById('loadHttpxFileName').value, 'httpxResults'); });
+            document.getElementById('clearHttpxResult').addEventListener('click', async (e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('jwtToken');
+                document.getElementById('httpxResults').innerHTML = `<div class="text-gray-400">Ready to probe...</div>`;
+                httpxAliveCount = 0; httpxDeadCount = 0;
+                document.getElementById('httpxAlive').textContent = '0';
+                document.getElementById('httpxDead').textContent = '0';
+                document.getElementById('httpxTotal').textContent = '0';
+                await fetch(`${apiUrl}/user/clear-status`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tool: 'httpx' }) });
+            });
+            
+            // Initial call
+            checkLoginStatus();
+        });
+        
+        // --- Standalone Functions (no dependency on DOM ready) ---
+        async function fetchToolStatus(){const token=localStorage.getItem("jwtToken");if(!token)return;const container=document.getElementById("toolStatusContainer");try{const response=await fetch(`${apiUrl}/tools/status`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){throw new Error((await response.json()).error||"Failed to fetch tool status")}const statuses=await response.json();container.innerHTML="";if(!statuses||statuses.length===0){container.innerHTML='<div class="text-yellow-400">No tools configured.</div>';return}statuses.forEach(tool=>{const statusText=tool.installed?"✓ Installed":"✗ Not Installed";const statusColor=tool.installed?"text-green-400":"text-red-400";let icon="🛠️";if(tool.name.includes("amass"))icon="🌐";if(tool.name.includes("assetfinder"))icon="🔍";if(tool.name.includes("sublist3r"))icon="📡";if(tool.name.includes("subfinder"))icon="🔎";if(tool.name.includes("httpx"))icon="🔗";const toolDiv=document.createElement("div");toolDiv.className="flex items-center justify-between p-3 bg-gray-700 rounded-lg";toolDiv.innerHTML=`<div class="flex items-center"><span class="text-2xl mr-3">${icon}</span><span class="text-gray-300 capitalize">${tool.name}</span></div><span class="${statusColor} text-sm font-semibold">${statusText}</span>`;container.appendChild(toolDiv)})}catch(error){container.innerHTML=`<div class="text-red-400 p-3 bg-gray-700 rounded-lg">Error: ${error.message}</div>`}}async function fetchSystemStats(){const token=localStorage.getItem("jwtToken");if(!token)return;try{const response=await fetch(`${apiUrl}/stats`,{headers:{Authorization:`Bearer ${token}`}});if(!response.ok){if(response.status===401){logout()}return}const stats=await response.json();document.getElementById("cpuValue").textContent=`${stats.cpu.toFixed(1)}%`;document.getElementById("cpuBar").style.width=`${stats.cpu.toFixed(1)}%`;document.getElementById("ramValue").textContent=`${formatBytes(stats.ram_used)}`;document.getElementById("ramBar").style.width=`${stats.ram_percent.toFixed(1)}%`;document.getElementById("ramText").textContent=`${formatBytes(stats.ram_used)} of ${formatBytes(stats.ram_total)}`;document.getElementById("storageValue").textContent=`${formatBytes(stats.disk_used)}`;document.getElementById("storageBar").style.width=`${stats.disk_percent.toFixed(1)}%`;document.getElementById("storageText").textContent=`${formatBytes(stats.disk_used)} of ${formatBytes(stats.disk_total)}`}catch(error){console.error("Failed to fetch system stats:",error)}}
+    </script>
+</body>
+</html>
+
