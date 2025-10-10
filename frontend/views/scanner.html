@@ -1,0 +1,22 @@
+<link rel="stylesheet" href="css/tools/scanner.css">
+<section class="panel fade-enter" data-view-root>
+    <header>
+        <h2 class="panel__title">Port Scanner</h2>
+        <p class="notice">Performs a lightweight simulated scan across common ports.</p>
+    </header>
+    <form id="port-scanner-form" class="tool-form" autocomplete="off">
+        <div class="form__group">
+            <label class="form__label" for="port-scanner-target">Target Host / IP</label>
+            <input class="form__input" id="port-scanner-target" name="target" type="text" placeholder="192.168.0.1" required>
+        </div>
+        <div class="form__group">
+            <label class="form__label" for="port-range">Port Range</label>
+            <input class="form__input" id="port-range" name="range" type="text" value="20-1024" pattern="^\d{1,5}-\d{1,5}$" required>
+        </div>
+        <button class="form__button" type="submit">Scan</button>
+    </form>
+    <p class="scanner__status" hidden data-status></p>
+    <section aria-live="polite" class="results" data-results>
+        Provide an IP or hostname to run a simulated scan.
+    </section>
+</section>
